@@ -8,8 +8,17 @@
 #include <glm/glm/gtc/matrix_transform.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
 
+#include <filesystem>
+#include <sstream>
+#include <fstream>
 
-class Mesh
+struct meshio
+{
+    std::vector <float> positiondata;
+    std::vector <float> normaldata;
+    std::vector <float> bufferdata;   
+};
+class mesh
 {
     public:
     std::vector <float> data ;
@@ -23,28 +32,53 @@ class Mesh
 class MeshGenerator
 {
     public:
-    Mesh gencuboidmesh(float a , float b , float c);
-    Mesh genplanemesh(float a , float b);
+    mesh gencuboidmesh(glm::vec3 sides);
+    mesh genplanemesh(float a , float b);
+    mesh readobj(std::string path);
+
+    void readvertex (meshio& iotemp ,std::stringstream &s);
+    void readface (meshio& iotemp ,std::stringstream &s);
+    void readnormal (meshio& iotemp ,std::stringstream &s);
 };
 
-struct RigidBody
+
+enum shapetype {sphere,cube,plane};
+
+struct rigidbody
 {
     // Physics Parameters
-    glm::vec3 position;
-    glm::vec3 velocity;
-    glm::vec3 acceleration;
+    glm::vec3 position = {0.0f , 0.0f ,0.0f};
+    glm::vec3 velocity = {0.0f ,0.0f ,0.0f };
+    glm::vec3 acceleration = {0.0f ,0.0f ,0.0f };
+
+    // Shape of body
+    shapetype s ;
+    
+    // Dimesions
+    float radius ;                      // for sphere 
+    glm::vec3 hcubeside;                // for cube 
+    glm::vec2 hplaneside;               // for plane 
+    glm::vec3 normplane;                // for plane
+
+
+    rigidbody(shapetype s_param,float radii);
+    rigidbody(shapetype s_param,glm::vec3 side);
+    rigidbody(shapetype s_param,glm::vec2 sides , glm::vec3 norm);
 };
 
 class Entity
 {
     public:
+    // Unique Id 
     const unsigned int id;
 
     // Rendering Parameters
-    glm::vec3 col;
+    glm::vec3 col = {1.0f ,1.0f , 1.0f};
     glm::mat4 model_matrix = glm::mat4 (1.0f);
-    Mesh* mesh;
-    RigidBody* body;
+
+    // Attachments 
+    mesh* entitymesh;
+    rigidbody* entitybody;
 
 
 
@@ -55,7 +89,6 @@ class Entity
     void rotateEntity(float angle, glm::vec3 axis);
     void scaleEntity(glm::vec3 axis);
 
-    void updatePosition(float timeincrement);
     void updateModelMatrix();
 
 };
@@ -65,7 +98,7 @@ class Scene
     public:
     std::vector <Entity*> entities;
 
-    void newEntity(unsigned int id ,Mesh* mesh_data,glm::vec3 position_param);
+    void newEntity(unsigned int id ,mesh* mesh_data,rigidbody* bodydata);
 
 };
 

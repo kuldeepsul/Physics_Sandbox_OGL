@@ -25,7 +25,8 @@ int main()
         glm::vec3(-1.5f,  20.2f, -2.5f),  
         glm::vec3(-3.8f,  20.0f, -12.3f),  
         glm::vec3( 2.4f,  20.4f, -3.5f),  
-        glm::vec3(-1.7f,  30.0f, -7.5f),    
+        glm::vec3(-1.7f,  30.0f, -7.5f), 
+        glm::vec3(-2.7f,  30.0f, -5.5f)   
     };
 
     ///////////////////////////////////////////////
@@ -39,29 +40,49 @@ int main()
     ////////////////////////////////////////////////
     // Scene Generation.
     MeshGenerator MeshGen;
-    Mesh m1 = MeshGen.gencuboidmesh(1.0f, 1.0f ,1.0f);
-    Mesh m2 = MeshGen.genplanemesh(1000.0f , 1000.0f);
+    float cubeside = 2.0f;
+    glm::vec3 cubesides = {cubeside,cubeside,cubeside};
+
+    mesh mcube = MeshGen.gencuboidmesh(cubesides);
+    mesh mplane = MeshGen.genplanemesh(100.0f , 100.0f);
+    mesh mobject = MeshGen.readobj("objs/sphere.obj");
+
+    
+    rigidbody* rcube1 = new rigidbody(shapetype::cube ,cubesides);
+    rigidbody* rcube2 = new rigidbody(shapetype::cube ,cubesides);
+    rigidbody* rcube3 = new rigidbody(shapetype::cube ,cubesides);
+    rigidbody* rcube4 = new rigidbody(shapetype::cube ,cubesides);
+    rigidbody* rcube5 = new rigidbody(shapetype::cube ,cubesides);
+    rigidbody* rplane = new rigidbody(shapetype::plane ,{100.0f,100.0f},{0.0f ,1.0f ,0.0f});
 
     Scene s1;
-    s1.newEntity(1,&m1,cubePositions[1]);
-    s1.newEntity(2,&m1,cubePositions[2]);
-    s1.newEntity(3,&m1,cubePositions[3]);
-    s1.newEntity(4,&m1,cubePositions[4]);
-    s1.newEntity(5,&m1,cubePositions[5]);
-    s1.newEntity(6,&m2,{0.0f,0.0f,0.0f});
+    s1.newEntity(1,&mobject,rcube1);
+    s1.newEntity(2,&mobject,rcube2);
+    s1.newEntity(3,&mobject,rcube3);
+    s1.newEntity(4,&mobject,rcube4);
+    s1.newEntity(5,&mobject,rcube5);
+    s1.newEntity(6,&mplane,rplane);
 
+    int i {0};
     for (Entity* ent : s1.entities)
     {
+        
+        i++;
         if(ent->id != 6)
-        {        
-            ent->scaleEntity({10.0f,10.0f,10.0f});
-            ent->body->velocity = {0.0f,0.0f,0.0f};
+        {     
+            ent->entitybody->position = cubePositions[i] ;  
+            ent->scaleEntity({3.0f,3.0f,3.0f});
+            ent->entitybody->velocity = {0.0f,0.0f,0.0f};
             ent->col = {0.4f,0.3f,0.8f};
+            ent->updateModelMatrix();
+                       
+
         }
         else
         {
-            ent->body->velocity = {0.0f,0.0f,0.0f};
-            ent->body->position = {500.0f,0.0f,500.0f};
+            ent->entitybody->velocity = {0.0f,0.0f,0.0f};
+            ent->entitybody->position = {500.0f,0.0f,500.0f};
+            ent->col = {0.1f,0.3f,0.5f};
         }
     
     }
@@ -114,14 +135,14 @@ int main()
 
             if (ent->id != 6)
             {
-                ent->body->acceleration = 9.8f * glm::vec3 (0.0f , -1.0f ,0.0f);
-                ent->body->velocity += (0.01f) * ent->body->acceleration;
-                ent->body->position += (0.01f) * ent->body->velocity;
-                ent->updateModelMatrix();
+                ent->entitybody->acceleration = 9.8f * glm::vec3 (0.0f , -1.0f ,0.0f);
+                ent->entitybody->velocity += (0.01f) * ent->entitybody->acceleration;
+                ent->entitybody->position += (0.01f) * ent->entitybody->velocity;
+                //ent->updateModelMatrix();
 
-                if (ent->body->position.y <= 0)
+                if (ent->entitybody->position.y - ent->entitybody->hcubeside.y <= 0)
                 {
-                    ent->body->velocity.y = -ent->body->velocity.y ;
+                    ent->entitybody->velocity.y = -ent->entitybody->velocity.y ;
                 }
             }
         }
@@ -136,8 +157,8 @@ int main()
             unsigned int modelloc = glGetUniformLocation(program,"Model_mat");
             glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
 
-            glBindVertexArray(ent->mesh->VAO);
-            glDrawArrays(GL_TRIANGLES,0,ent->mesh->vertexcount);
+            glBindVertexArray(ent->entitymesh->VAO);
+            glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
             
         }
 
