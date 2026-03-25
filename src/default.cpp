@@ -134,7 +134,7 @@ void FPSCamera::updateViewMatrix()
     this->viewmatrix = glm::lookAt(campos, campos+camfront, camup);
 };
 
-void FPSCamera::processMouseInput(GLFWwindow* window)
+void FPSCamera::processMouseInput(GLFWwindow* window,bool& firstmouse)
 {
     static float lastx = 0 ;
     static float lasty = 0 ;
@@ -142,6 +142,16 @@ void FPSCamera::processMouseInput(GLFWwindow* window)
     double curx ,cury ;
 
     glfwGetCursorPos(window,&curx,&cury);
+
+    if (firstmouse)
+    {
+        lastx = curx ;
+        lasty = cury ;
+        firstmouse = false ;
+    }
+
+
+
 
     float deltax = curx - lastx;
     float deltay = lasty - cury ; 

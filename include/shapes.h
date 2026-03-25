@@ -49,13 +49,13 @@ class mesh
 class MeshGenerator
 {
     public:
-    mesh gencuboidmesh(glm::vec3 sides);
-    mesh genplanemesh(float a , float b);
-    mesh readobj(std::string path);
+    static mesh gencuboidmesh(glm::vec3 sides);
+    static mesh genplanemesh(float a , float b);
+    static mesh readobj(std::string path);
 
-    void readvertex (meshio& iotemp ,std::stringstream &s);
-    void readface (meshio& iotemp ,std::stringstream &s);
-    void readnormal (meshio& iotemp ,std::stringstream &s);
+    static void readvertex (meshio& iotemp ,std::stringstream &s);
+    static void readface (meshio& iotemp ,std::stringstream &s);
+    static void readnormal (meshio& iotemp ,std::stringstream &s);
 };
 
 
@@ -95,6 +95,7 @@ class Entity
     public:
     // Unique Id 
     const unsigned int id;
+    std::string name;
 
     // Rendering Parameters
     glm::vec3 col;
@@ -123,7 +124,7 @@ class Scene
     public:
     std::vector <Entity*> entities;
 
-    void newEntity(unsigned int id ,mesh* mesh_data,rigidbody* bodydata);
+    void newEntity(unsigned int id , shapetype s , glm::vec3 sides);
 
 };
 

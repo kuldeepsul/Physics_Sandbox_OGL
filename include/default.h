@@ -15,7 +15,7 @@ std::string readShaderFile(std::string path);
 void checkShaderCompilation(unsigned int &shader);
 unsigned int getShaderProgram(std::string& path_vert,std::string path_frag);
 
-
+enum  class  cursormode {gui_mode, camera_mode};
 
 
 class FPSCamera
@@ -30,7 +30,7 @@ class FPSCamera
     float pitch = 0.0f;
 
     void rotatecamera(float yawinc, float pitchinc);  
-    void processMouseInput(GLFWwindow* window);
+    void processMouseInput(GLFWwindow* window,bool& firstmouse);
     void processkeyboardinput(GLFWwindow* window);
     void updateViewMatrix ();
 };

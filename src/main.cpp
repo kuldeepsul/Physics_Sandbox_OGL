@@ -3,6 +3,9 @@
 #include <glm/glm/glm.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 int main()
 {
@@ -18,6 +21,19 @@ int main()
         std::cerr << e.what() << '\n';
     }
     glViewport(0,0,1920,1080);
+
+    ///////////////////////////////////
+    // Initialize Imgui .
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    // Setup Rendering Backend .
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
+    ImGui_ImplOpenGL3_Init();
+
+    /////////////////////////////////
     
     glm::vec3 cubePositions[] = {
         glm::vec3( 0.0f,  0.0f,  0.0f), 
@@ -147,6 +163,11 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     bool isPaused {false} ;
+    bool showcontrols {true};
+    static float grav {0.0f};
+    cursormode currentmode = cursormode::camera_mode;
+    static bool firstmouse = true ;
+
 
     while (!glfwWindowShouldClose(window))
     {
@@ -171,11 +192,27 @@ int main()
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+        if (glfwGetKey(window,GLFW_KEY_M) == GLFW_PRESS)
+        {
+            if (currentmode == cursormode::camera_mode) 
+            {currentmode = cursormode::gui_mode;
+            firstmouse = true ;}
+            else  {currentmode = cursormode::camera_mode;}
+        }
 
         // Camera Controls
-        glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_DISABLED);
-        cam.processkeyboardinput( window);
-        cam.processMouseInput(window);
+        if (currentmode == cursormode::camera_mode)
+        {
+            glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_DISABLED);
+            cam.processkeyboardinput( window);
+            cam.processMouseInput(window,firstmouse);
+        }
+        else if (currentmode == cursormode::gui_mode)
+        {
+            glfwSetInputMode(window,GLFW_CURSOR,GLFW_CURSOR_NORMAL);
+        }
+        
+
 
 
         // View Matrix Based on  Camera Controls
@@ -193,7 +230,7 @@ int main()
 
                 if (ent->entitybody->isCollider)
                 {
-                    //ent->entitybody->acceleration = 9.8f * glm::vec3 (0.0f , -1.0f ,0.0f);
+                    ent->entitybody->acceleration = grav * glm::vec3 (0.0f , -1.0f ,0.0f);
                     ent->entitybody->velocity += (0.01f) * ent->entitybody->acceleration;
                     ent->entitybody->position += (0.01f) * ent->entitybody->velocity;
                     ent->updateModelMatrix();
@@ -243,10 +280,35 @@ int main()
             
         }
 
-
-        glfwSwapBuffers(window);
         glfwPollEvents();
+
+        // Start ImGui Frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if(showcontrols)
+        {
+            ImGui::Begin("Object Controls");
+            ImGui::SliderFloat("Gravity",&grav,0.0f,20.0f);
+            if (ImGui::Button("Create Box")) 
+            {
+                
+            };
+
+
+            ImGui::End();
+
+        }
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
+
     }
+    // Terminate Imgui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
     glfwTerminate();
     
 }
