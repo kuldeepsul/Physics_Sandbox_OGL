@@ -44,18 +44,14 @@ class mesh
     unsigned int VAO;
 
     void genBufferObjects();
-};
 
-class MeshGenerator
-{
-    public:
-    static mesh gencuboidmesh(glm::vec3 sides);
-    static mesh genplanemesh(float a , float b);
-    static mesh readobj(std::string path);
+    void gencuboidmesh(glm::vec3 sides);
+    void genplanemesh(float a , float b);
+    void readobj(std::string path);
 
-    static void readvertex (meshio& iotemp ,std::stringstream &s);
-    static void readface (meshio& iotemp ,std::stringstream &s);
-    static void readnormal (meshio& iotemp ,std::stringstream &s);
+    void readvertex (meshio& iotemp ,std::stringstream &s);
+    void readface (meshio& iotemp ,std::stringstream &s);
+    void readnormal (meshio& iotemp ,std::stringstream &s);
 };
 
 
@@ -94,23 +90,37 @@ class Entity
 {
     public:
     // Unique Id 
-    const unsigned int id;
-    std::string name;
+    const unsigned int id {0};
+    std::string name {"no_name"};
 
     // Rendering Parameters
-    glm::vec3 col;
+    glm::vec3 col {1.0f,1.0f,1.0f};
     glm::mat4 model_matrix = glm::mat4 (1.0f);
     bool isWireFrame {false};
 
     // Attachments 
-    mesh* entitymesh;
-    rigidbody* entitybody;
+    mesh* entitymesh = nullptr;
+    rigidbody* entitybody = nullptr;
 
 
 
-    Entity() = delete ;
+    Entity();
     Entity(unsigned int i) : id(i) {} ;
+    ~Entity()
+    {
+        if ( entitymesh)
+        {
+            delete entitymesh;
+        }
+        
+        if (entitybody)
+        {
+            delete entitybody;
+        }
+    }
 
+    rigidbody* gencubeentitybody(shapetype s , glm::vec3 sides);
+    mesh* gencubeentitymesh(glm::vec3 sides);
     void translateEntity(glm::vec3 disp);
     void rotateEntity(float angle, glm::vec3 axis);
     void scaleEntity(glm::vec3 axis);
@@ -124,7 +134,9 @@ class Scene
     public:
     std::vector <Entity*> entities;
 
+    Entity* newEntity(unsigned int id);
     void newEntity(unsigned int id , shapetype s , glm::vec3 sides);
+    
 
 };
 

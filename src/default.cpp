@@ -192,3 +192,98 @@ void FPSCamera::processkeyboardinput(GLFWwindow* window)
 
     this->updateViewMatrix();
 };
+
+void gui::EntityCreationWindow(float& grav)
+{
+    ImGui::SetNextWindowSize (ImVec2(200,300),ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(0,0),ImGuiCond_FirstUseEver);
+    ImGui::Begin("Main",&this->OpenEntityCreationWindow);
+    ImGui::SliderFloat("Gravity",&grav,0.0f,20.0f);
+
+    if (ImGui::Button("Create Entity")) 
+    {
+        this->OpenEntityPropertiesWindow = true;
+    };
+
+    if (ImGui::Button("Create Bound")) 
+    {
+        this->OpenEntityPropertiesWindow = true;
+    };
+
+
+    ImGui::End();
+}
+
+void gui::EntityPropertiesWindow(Scene* scene)
+{
+    
+    ImGui::SetNextWindowSize (ImVec2(500,600),ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos (ImVec2(300,0),ImGuiCond_FirstUseEver);
+
+    static float position [3] = {0.0f ,0.0f ,0.0f};
+    static float velocity [3] = {0.0f ,0.0f ,0.0f};
+    static float acceleration [3] = {0.0f ,0.0f ,0.0f};
+    static float mass = 1.0f;
+    static bool iscollider {false};
+
+    static float color [3] = {1.0f ,1.0f ,1.0f};
+    char name [20];
+    int id_param = 0 ;
+
+
+
+
+    ImGui::Begin("Object Parameters",&this->OpenEntityPropertiesWindow);
+
+    ImGui::InputInt("Entity Id",&id_param);
+    ImGui::InputText("Entity Name", name,20);
+
+    ImGui::SetNextItemWidth(400);
+    ImGui::SliderFloat3("Position",position,-10.0f ,10.0f);
+
+    ImGui::SetNextItemWidth(400);
+    ImGui::SliderFloat3("Velocity",velocity,-10.0f,10.0f);
+
+    ImGui::SetNextItemWidth(400);
+    ImGui::SliderFloat3("Acceleration",acceleration,-10.0f,10.0f);
+
+    ImGui::SetNextItemWidth(400);
+    ImGui::SliderFloat3("Color",color,0.0f ,1.0f);
+
+    ImGui::SetNextItemWidth(400);
+    ImGui::SliderFloat("Side",&mass,0.1f,5.0f);
+
+    ImGui::RadioButton("Collider",iscollider);
+
+    if (ImGui::Button("Create"))
+    {
+        // Creating Objects
+        Entity* ent  = scene->newEntity(id_param);
+
+        if (!ent)
+        {
+            std::cout << "Entity Creation Failed" << std::endl;
+            return ;
+        }
+        ent->col  = {color[0],color[1],color[2]};
+
+        // Create mesh for entity
+        ent->entitymesh = new mesh();
+        ent->entitymesh->gencuboidmesh({mass, mass,mass});
+        ent->entitybody = new rigidbody(shapetype::cube,{mass,mass,mass});
+        ent->entitybody->isCollider = true ;
+        ent->entitybody->velocity = {velocity[0],velocity[1],velocity[2]};
+        ent->entitybody->acceleration = {acceleration[0],acceleration[1],acceleration[2]};
+        ent->entitybody->hcubeside = {mass, mass,mass};
+        ent->entitybody->isCollider = iscollider;
+        ent->updateModelMatrix();
+
+    }
+
+    if (ImGui::Button("Done"))
+    {
+        this->OpenEntityPropertiesWindow = false ;
+    }
+
+    ImGui::End();
+}

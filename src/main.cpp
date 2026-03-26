@@ -84,45 +84,27 @@ int main()
     cam.updateViewMatrix();
     ///////////////////////////////////////////////
     // Creating bounds 
-    bound domain (10.0f,-10.0f,10.0f,0.0f,10.0f,-10.0f);
+    bound domain (10.0f,-10.0f,5.0f,-5.0f,10.0f,-10.0f);
 
     ////////////////////////////////////////////////
     // Scene Generation.
-    MeshGenerator MeshGen;
     float cubeside = 1.0f;
     glm::vec3 cubesides = {cubeside,cubeside,cubeside};
 
-    mesh mcube1 = MeshGen.gencuboidmesh(cubesides);
-    mesh mcube2 = MeshGen.gencuboidmesh(cubesides);
-    mesh mcube3 = MeshGen.gencuboidmesh(cubesides);
-    mesh mcube4 = MeshGen.gencuboidmesh(cubesides);
-    mesh mcube5 = MeshGen.gencuboidmesh(cubesides);
-    mesh mcube6 = MeshGen.gencuboidmesh(cubesides);
 
-    mesh mplane = MeshGen.genplanemesh(100.0f , 100.0f);
-    mesh mobject = MeshGen.readobj("objs/sphere.obj");
-    mesh mbound = MeshGen.gencuboidmesh({20.0f,10.0f,20.0f});
-
-    
-    rigidbody* rcube1 = new rigidbody(shapetype::cube ,cubesides);
-    rigidbody* rcube2 = new rigidbody(shapetype::cube ,cubesides);
-    rigidbody* rcube3 = new rigidbody(shapetype::cube ,cubesides);
-    rigidbody* rcube4 = new rigidbody(shapetype::cube ,cubesides);
-    rigidbody* rcube5 = new rigidbody(shapetype::cube ,cubesides);
-    rigidbody* rcube6 = new rigidbody(shapetype::cube ,cubesides);
-
-    rigidbody* rbound = new rigidbody(shapetype::cube ,{10.0f,5.0f,10.0f});
+    shapetype cube = shapetype::cube;
 
     Scene s1;
-    s1.newEntity(1,&mcube1,rcube1);
-    s1.newEntity(2,&mcube2,rcube2);
-    s1.newEntity(3,&mcube3,rcube3);
-    s1.newEntity(4,&mcube4,rcube4);
-    s1.newEntity(5,&mcube5,rcube5);
-    s1.newEntity(7,&mcube6,rcube6);
+    s1.newEntity(1,cube,cubesides);
+    s1.newEntity(2,cube,cubesides);
+    s1.newEntity(3,cube,cubesides);
+    s1.newEntity(4,cube,cubesides);
+    s1.newEntity(5,cube,cubesides);
+    
 
 
-    s1.newEntity(6,&mbound,rbound);
+
+    s1.newEntity(6,cube,{10.0f,5.0f,10.0f});
     
 
     int i {0};
@@ -164,9 +146,13 @@ int main()
     glEnable(GL_DEPTH_TEST);
     bool isPaused {false} ;
     bool showcontrols {true};
+    bool showobjectproperties {false};
     static float grav {0.0f};
     cursormode currentmode = cursormode::camera_mode;
     static bool firstmouse = true ;
+
+
+    gui* ui = new gui();
 
 
     while (!glfwWindowShouldClose(window))
@@ -195,9 +181,16 @@ int main()
         if (glfwGetKey(window,GLFW_KEY_M) == GLFW_PRESS)
         {
             if (currentmode == cursormode::camera_mode) 
-            {currentmode = cursormode::gui_mode;
-            firstmouse = true ;}
-            else  {currentmode = cursormode::camera_mode;}
+            {
+                currentmode = cursormode::gui_mode;
+                firstmouse = true ;
+                isPaused = true;
+            }
+            else  
+            {
+                currentmode = cursormode::camera_mode;
+                isPaused = false ;
+            }
         }
 
         // Camera Controls
@@ -287,19 +280,15 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if(showcontrols)
+        if(ui->OpenEntityCreationWindow)
         {
-            ImGui::Begin("Object Controls");
-            ImGui::SliderFloat("Gravity",&grav,0.0f,20.0f);
-            if (ImGui::Button("Create Box")) 
-            {
-                
-            };
-
-
-            ImGui::End();
-
+            ui->EntityCreationWindow(grav);
         }
+        if (ui->OpenEntityPropertiesWindow)
+        {
+            ui->EntityPropertiesWindow(&s1);
+        }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);

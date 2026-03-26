@@ -24,7 +24,7 @@ void mesh::genBufferObjects()
     
 };
 
-mesh MeshGenerator::gencuboidmesh(glm::vec3 sides)
+void mesh::gencuboidmesh(glm::vec3 sides)
 {
 
     float hx = sides.x * 0.5f;
@@ -87,16 +87,14 @@ mesh MeshGenerator::gencuboidmesh(glm::vec3 sides)
         -hx, -hy, -hz,  0,-1, 0
     };
 
-    mesh obj;
-    obj.data =  vertexData;
-    obj.vertexcount = 36;
-    obj.genBufferObjects();
-
-    return obj;
+    
+    this->data =  vertexData;
+    this->vertexcount = 36;
+    this->genBufferObjects();
 
 };
 
-mesh MeshGenerator::genplanemesh(float a , float b)
+void mesh::genplanemesh(float a , float b)
 {
     float hx  = a * 0.5f;
     float hz  = b * 0.5f;
@@ -112,15 +110,14 @@ mesh MeshGenerator::genplanemesh(float a , float b)
         -hx, 0.0f,  hz,  0.0f,  1.0f,  0.0f
     };
 
-    mesh obj;
-    obj.data = vertexData;
-    obj.vertexcount = 6 ;
-    obj.genBufferObjects();
+    
+    this->data = vertexData;
+    this->vertexcount = 6 ;
+    this->genBufferObjects();
 
-    return obj;
 };
 
-mesh MeshGenerator::readobj(std::string path)
+void mesh::readobj(std::string path)
 {
     // Creating full path from reletive path. 
     std::filesystem::path root = std::filesystem::path(__FILE__).parent_path().parent_path();
@@ -164,17 +161,15 @@ mesh MeshGenerator::readobj(std::string path)
         
     }
 
-    mesh obj;
-    obj.data = temp.bufferdata;
-    int count = obj.data.size()/6;
-    obj.vertexcount = count;
-    obj.genBufferObjects();
-
-    return obj;
+    
+    this->data = temp.bufferdata;
+    int count = this->data.size()/6;
+    this->vertexcount = count;
+    this->genBufferObjects();
 
 };
 
-void MeshGenerator::readvertex (meshio& iotemp ,std::stringstream &s)
+void mesh::readvertex (meshio& iotemp ,std::stringstream &s)
 {
     float x,y,z;
     std::string val;
@@ -194,7 +189,7 @@ void MeshGenerator::readvertex (meshio& iotemp ,std::stringstream &s)
 
 };
 
-void MeshGenerator::readnormal (meshio& iotemp ,std::stringstream &s)
+void mesh::readnormal (meshio& iotemp ,std::stringstream &s)
 {
     float x,y,z;
     std::string val;
@@ -213,7 +208,7 @@ void MeshGenerator::readnormal (meshio& iotemp ,std::stringstream &s)
     iotemp.normaldata.push_back(z);
 };
 
-void MeshGenerator::readface (meshio& iotemp ,std::stringstream &s)
+void mesh::readface (meshio& iotemp ,std::stringstream &s)
 {
     std::string entry;
 
@@ -247,11 +242,26 @@ void MeshGenerator::readface (meshio& iotemp ,std::stringstream &s)
 };
 
 
-void Scene::newEntity(unsigned int id ,mesh* mesh_data,rigidbody* bodydata)
+Entity* Scene::newEntity(unsigned int id)
 {
     Entity* ent = new Entity(id);
-    ent->entitymesh = mesh_data;
-    ent->entitybody = bodydata;
+    this->entities.push_back(ent);
+
+    return ent;
+}
+
+void Scene::newEntity(unsigned int id , shapetype s , glm::vec3 sides)
+{
+    Entity* ent = new Entity(id);
+
+    // Generete mesh and attach to entity
+    mesh* m = new mesh(); 
+    
+    m->gencuboidmesh(sides);
+    ent->entitymesh = m;
+
+    // Generete rigid body and attach to entity.
+    ent->entitybody = new rigidbody(shapetype::cube,sides);
     
     this->entities.push_back(ent);
 };

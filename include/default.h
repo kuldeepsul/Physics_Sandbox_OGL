@@ -9,6 +9,10 @@
 #include <glm/glm/glm.hpp>
 #include <glm/glm/gtc/matrix_transform.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
+#include "shapes.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 GLFWwindow* InitializeProject(int width, int height, const char* title);
 std::string readShaderFile(std::string path);
@@ -33,5 +37,17 @@ class FPSCamera
     void processMouseInput(GLFWwindow* window,bool& firstmouse);
     void processkeyboardinput(GLFWwindow* window);
     void updateViewMatrix ();
+};
+
+class gui
+{
+    public:
+    bool OpenEntityCreationWindow {true};
+    bool OpenEntityPropertiesWindow {false};
+    bool OpenBodyPropertiesWindow {false};
+
+    void EntityCreationWindow(float& grav);
+    void EntityPropertiesWindow(Scene* scene);
+    void EntityBodyPropertiesWindow(rigidbody* ebody , mesh emesh);
 };
 
