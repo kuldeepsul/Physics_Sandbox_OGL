@@ -33,49 +33,6 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window,true);
     ImGui_ImplOpenGL3_Init();
 
-    /////////////////////////////////
-    
-    glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f), 
-        glm::vec3( 0.0f,  3.0f, -1.0f), 
-        glm::vec3(-1.5f,  2.0f, -2.0f),  
-        glm::vec3(-3.8f,  1.0f, -3.0f),  
-        glm::vec3( 2.4f,  5.0f, -4.0f),  
-        glm::vec3(-1.7f,  3.2f, -5.0f), 
-        glm::vec3(-2.7f,  6.0f, -6.0f)   
-    };
-
-    glm::vec3 cubeVelocities[] = {
-        glm::vec3( 1.0f,  0.0f,  0.0f), 
-        glm::vec3( 0.0f,  5.0f,  0.0f), 
-        glm::vec3(-6.0f,  4.0f,  1.0f),  
-        glm::vec3(-2.0f,  5.0f,  2.0f),  
-        glm::vec3( 4.0f,  2.0f,  -3.0f),  
-        glm::vec3( -5.0f, -4.0f,  -4.0f), 
-        glm::vec3( 1.0f, -6.0f,  5.0f)   
-    };
-    /*
-        glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f), 
-        glm::vec3( 0.0f,  3.0f,  0.0f), 
-        glm::vec3(-1.5f,  3.0f,  0.0f),  
-        glm::vec3(-3.8f,  3.0f,  0.0f),  
-        glm::vec3( 2.4f,  3.0f,  0.0f),  
-        glm::vec3(-1.7f,  3.2f,  0.0f), 
-        glm::vec3(-2.7f,  3.0f,  0.0f)   
-    };
-
-    glm::vec3 cubeVelocities[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f), 
-        glm::vec3(-2.0f,  0.0f,  0.0f), 
-        glm::vec3(-6.0f,  0.0f,  0.0f),  
-        glm::vec3(-2.0f,  0.0f,  0.0f),  
-        glm::vec3( 2.0f,  0.0f,  0.0f),  
-        glm::vec3( 5.0f,  0.0f,  0.0f), 
-        glm::vec3( 8.0f,  0.0f,  0.0f) 
-    };
-    */
-
     ///////////////////////////////////////////////
     // Initializing Camera
     FPSCamera cam;
@@ -83,59 +40,65 @@ int main()
     cam.camfront = {0.0f, 0.0f ,3.0f};
     cam.updateViewMatrix();
     ///////////////////////////////////////////////
-    // Creating bounds 
-    /*
-    bound domain (10.0f,-10.0f,5.0f,-5.0f,10.0f,-10.0f);
 
-    ////////////////////////////////////////////////
-    // Scene Generation.
-    float cubeside = 1.0f;
-    glm::vec3 cubesides = {cubeside,cubeside,cubeside};
-
-
-    shapetype cube = shapetype::cube;
-
-    
-    s1.newEntity(1,cube,cubesides);
-    s1.newEntity(2,cube,cubesides);
-    s1.newEntity(3,cube,cubesides);
-    s1.newEntity(4,cube,cubesides);
-    s1.newEntity(5,cube,cubesides);
-    
-
-
-
-    s1.newEntity(6,cube,{20.0f,10.0f,20.0f});
-    
-
-    int i {0};
-    for (Entity* ent : s1.entities)
-    {  
-        i++;
-
-        ent->entitybody->position = cubePositions[i] ;  
-        ent->scaleEntity({1.0f,1.0f,1.0f});
-        ent->entitybody->velocity = 1.5f * cubeVelocities[i];
-        ent->col = {0.4f,0.3f,0.8f};
-        ent->updateModelMatrix(); 
-
-        std::stringstream s ;
-        s << "Cube" << i ;
-        ent->name = s.str();
-        s.clear();
-
-        if (ent->id == 6 )
-        {
-            ent->entitybody->position = {0.0f , 0.0f ,0.0f};
-            ent->col = {1.0f,1.0f,1.0f};
-            ent->entitybody->isCollider = false;
-            ent->updateModelMatrix();
-            ent->isWireFrame = true ;
-        }
-                       
-    }
-    */
     Scene s1;
+
+    //////////////////////////////////////////////////////
+    // Manual Setup
+
+    // Bounding Box.
+    Entity* ent  = s1.newEntity(0);
+    glm::vec3 side = {20.0f ,10.0f , 20.0f};
+    // Create mesh for entity
+    ent->name = "Bounding Box";
+    ent->id  = 0;
+
+    ent->entitymesh = new mesh();
+    ent->entitymesh->gencuboidmesh(side);
+
+    ent->entitybody = new rigidbody(shapetype::cube,side);
+    ent->entitybody->mass = side.x;
+
+    ent->isWireFrame = true;
+    ent->entitybody->isCollider = false;
+    s1.scene_bound = ent;
+
+    // create Cube 01
+
+    Entity* ent1  = s1.newEntity(0);
+    glm::vec3 side1 = {2.0f ,2.0f , 2.0f};
+    // Create mesh for entity
+    ent1->name = "Cube 01";
+    ent1->id  = 1;
+
+    ent1->entitymesh = new mesh();
+    ent1->entitymesh->gencuboidmesh(side1);
+
+    ent1->entitybody = new rigidbody(shapetype::cube,side1);
+    ent1->entitybody->mass = side1.x;
+
+    ent1->isWireFrame = false;
+    ent1->entitybody->isCollider = true;
+
+    // create Cube 02
+    
+    Entity* ent2  = s1.newEntity(0);
+    glm::vec3 side2 = {1.0f ,1.0f , 1.0f};
+    // Create mesh for entity
+    ent2->name = "Cube 02";
+    ent2->id  = 2;
+
+    ent2->entitymesh = new mesh();
+    ent2->entitymesh->gencuboidmesh(side2);
+
+    ent2->entitybody = new rigidbody(shapetype::cube,side2);
+    ent2->entitybody->mass = side2.x;
+
+    ent2->isWireFrame = false;
+    ent2->entitybody->isCollider = true;
+
+
+ 
     ///////////////////////////////////////////////////////
     // Shaders 
 

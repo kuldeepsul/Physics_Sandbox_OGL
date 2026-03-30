@@ -346,6 +346,34 @@ void gui::GetEntityProp(Scene* scene ,int &id_param)
     ent->entitybody->isCollider = enable_collision;
     ent->entitybody->updateorientation(angle,axis);
 
+    static bool collision_status = false;
+
+    for (Entity* ent1 : scene->entities)
+    {
+        if (ent1->entitybody->isCollider)
+        {
+            for (Entity* ent2 : scene->entities)
+            {
+                if (ent->entitybody->isCollider)
+                {
+                    if (ent1 == ent2)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        collision_status = ent1->entitybody->checkSAT(ent2->entitybody);
+                    }
+                    if(collision_status)
+                    {
+                        ent1->col = {1.0f,0.0f,0.0f};
+                        ent2->col = {1.0f,0.0f,0.0f};
+                    }
+                }
+            }
+        }
+    }
+
     
 
     ent->updateModelMatrix();

@@ -49,7 +49,6 @@ class mesh
     void genBufferObjects();
 
     void gencuboidmesh(glm::vec3 sides);
-    void genplanemesh(float a , float b);
     void readobj(std::string path);
 
     void readvertex (meshio& iotemp ,std::stringstream &s);
@@ -77,21 +76,25 @@ struct rigidbody
     shapetype s ;
     
     // Dimesions
-    float radius ;                      // for sphere 
     glm::vec3 hcubeside;                // for cube 
-    glm::vec2 hplaneside;               // for plane 
-    glm::vec3 normplane;                // for plane
 
-
-    rigidbody(shapetype s_param,float radii);
+    
     rigidbody(shapetype s_param,glm::vec3 side);
-    rigidbody(shapetype s_param,glm::vec2 sides , glm::vec3 norm);
 
     void updateorientation(float angle,glm::vec3 axisofrotation);
+
+
+    // Collision Utils
+    std::vector <glm::vec3> getvertexdata() const;
+    std::vector <glm::vec3> getSATaxes(const std::vector <glm::vec3> &vertdataA , const std::vector <glm::vec3> &vertdataB) const;
+    glm::vec2 getMinMaxprojection(const glm::vec3 &axis, const std::vector <glm::vec3> & vertexdata) const;
+    float getaxispenetration(const glm::vec3& axis,const std::vector <glm::vec3>& vertdataA , const std::vector<glm::vec3>& vertdataB) const;
 
     // Collisions
     void checkboundcollision(rigidbody* domain);
     void checkAABB(rigidbody* other);
+    bool checkSAT(rigidbody* other);
+    
 };
 
 class Entity
@@ -127,11 +130,6 @@ class Entity
         }
     }
 
-    rigidbody* gencubeentitybody(shapetype s , glm::vec3 sides);
-    mesh* gencubeentitymesh(glm::vec3 sides);
-    void translateEntity(glm::vec3 disp);
-    void rotateEntity(float angle, glm::vec3 axis);
-    void scaleEntity(glm::vec3 axis);
 
     void updateModelMatrix();
 
