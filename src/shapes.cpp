@@ -433,7 +433,7 @@ void rigidbody::checkAABB(rigidbody* other)
     }
 };
 
-std::vector <glm::vec3> rigidbody::getvertexdata() const
+std::vector <glm::vec3> rigidbody::getvertexdata()
 {
     glm::vec3 hside = this->hcubeside;
 
@@ -451,26 +451,29 @@ std::vector <glm::vec3> rigidbody::getvertexdata() const
     glm::vec3 vert7 = { -hside.x,hside.y, -hside.z};
     glm::vec3 vert8 = { -hside.x, -hside.y, -hside.z};
 
-    vertexdata.push_back(vert1);
-    vertexdata.push_back(vert2);
-    vertexdata.push_back(vert3);
-    vertexdata.push_back(vert4);
-    vertexdata.push_back(vert5);
-    vertexdata.push_back(vert6);
-    vertexdata.push_back(vert7);
-    vertexdata.push_back(vert8);
 
-
-    glm::mat4 translation_matrix = glm::translate(glm::mat4 (1.0f) ,this->position);
     glm::mat4 rotation_matrix = glm::mat4_cast(this->orientation);
-    glm::mat4 model_matrix = translation_matrix * rotation_matrix ;
+
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert1 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert2 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert3 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert4 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert5 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert6 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert7 + this->position);
+    vertexdata.push_back(glm::mat3(rotation_matrix)*vert8 + this->position);
+
+
+    
+    
+   
 
     // Apply World Transforms .
-    for (auto v1 : vertexdata)
+    for (int i {0} ; i < vertexdata.size() ; i++)
     {
-        v1 = (glm::mat3(model_matrix) * v1 ) + this->position;
-        //std::cout<< v1.x << "," << v1.y << "," << v1.z << "," << std::endl;
+        std::cout<< vertexdata[i].x << "," << vertexdata[i].y << "," << vertexdata[i].z << "," << std::endl;
     }
+
 
     return vertexdata;
 
@@ -508,14 +511,16 @@ std::vector <glm::vec3> rigidbody::getSATaxes(const std::vector <glm::vec3> &ver
     };
 
     // Cross Normals.
-    for (auto vecA : norm_cubeA)
+    for (auto& vecA : norm_cubeA)
     {
         for (auto vecB : norm_cubeB)
         {
             glm::vec3 temp = glm::cross(vecA,vecB);
             if(temp.x < 1.0e-12 && temp.x < 1.0e-12 && temp.x < 1.0e-12 )
             {
-                std::cout << "Zero axis found" << std::endl;
+                ///std::cout << "Zero axis found" << std::endl;
+                temp = vecA;
+                SATaxes.push_back(temp);
                 continue;
             }
             else
@@ -525,7 +530,7 @@ std::vector <glm::vec3> rigidbody::getSATaxes(const std::vector <glm::vec3> &ver
             
         }
     }
-    std::cout << "SAT axed formed " << std::endl;
+    //std::cout << "SAT axed formed " << std::endl;
     return SATaxes;
 
 }
@@ -534,24 +539,36 @@ glm::vec2 rigidbody::getMinMaxprojection(const glm::vec3 &axis, const std::vecto
 {
     float min = 0;
     float max = 0; 
+    bool first_check = true;
 
-    for (auto vert : vertexdata)
+    for (const auto& vert : vertexdata)
     {
-        float proj = glm::dot(vert,axis);
+        float proj = glm::dot(vert,axis); 
+        if (first_check)
+        {
+            min = proj;
+            max = proj;
+            first_check = false;
+        }
 
         min  = std::min (min,proj);
         max = std::max (max,proj);
     }
+    // std::cout << std::endl;
     
+    // std::cout << "Min : " << min << " , Max : " << max << std::endl;
 
     return glm::vec2(min,max);
 }
 
 float rigidbody::getaxispenetration (const glm::vec3& axis, const std::vector <glm::vec3>& vertdataA ,const std::vector <glm::vec3>& vertdataB) const
 {
+    std::cout << "Penetration Detection per axis." << std::endl;
 
     glm::vec2 projA = rigidbody::getMinMaxprojection(axis,vertdataA);
     glm::vec2 projB = rigidbody::getMinMaxprojection(axis,vertdataB);
+
+    std::cout << "Complete!" << std::endl;
 
     float penetration = 0 ;
     if (projA.x <= projB.x)
@@ -569,38 +586,51 @@ float rigidbody::getaxispenetration (const glm::vec3& axis, const std::vector <g
 
 bool rigidbody::checkSAT(rigidbody* other)
 {
-    //std::cout << "Checking SAT Collision ... " << std::endl;
-    std::vector <glm::vec3> vertdataA = this->getvertexdata();
-    std::vector <glm::vec3> vertdataB = other->getvertexdata();
+    std::cout << "Checking sat collisions" << std::endl;
+    std::vector <glm::vec3> vertdataA ;
+    std::vector <glm::vec3> vertdataB ;
+
+    vertdataA = this->getvertexdata();
+    vertdataB = other->getvertexdata();
+    
 
     // Create Normal of faces for SAT Checks.
-
-    std::vector <glm::vec3> SATaxes = rigidbody::getSATaxes(vertdataA,vertdataB);
+    
+    std::vector <glm::vec3> SATaxes = this->getSATaxes(vertdataA,vertdataB);
     std::vector <float> axispen ; 
-
+    
+    
     
     int k = 1 ;
-    for (auto axis  : SATaxes)
+    for (auto& axis  : SATaxes)
     {
 
         float temp = rigidbody::getaxispenetration(axis,vertdataA,vertdataB);
-        if (temp > 0)
+        if (temp >= 0)
         {
             axispen.push_back(-1.0f);
         }
-        else if (temp <= 0)
+        else if (temp < 0)
         {
             axispen.push_back(-temp);
         }
     }
+
+    
 
     bool collision = true;
     float min_collision = 0 ;
     int collision_axis = -1 ;
     int i {0} ;
 
-    while (collision || i == axispen.size())
+    
+    while (collision)
     {
+        if( i == axispen.size())
+        {
+            break;
+        }
+
         if (axispen[i] < 0.0f)
         {
             collision = false;
@@ -626,6 +656,10 @@ bool rigidbody::checkSAT(rigidbody* other)
     if (collision)
     {
         std::cout << "collision detected!" << std::endl;
+    }
+    else
+    {
+        std::cout << "--" << std::endl;
     }
     return collision;
 

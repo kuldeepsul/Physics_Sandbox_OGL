@@ -1,3 +1,4 @@
+#include <iostream>
 #include "default.h"
 #include "shapes.h"
 #include <glm/glm/glm.hpp>
@@ -65,7 +66,7 @@ int main()
 
     // create Cube 01
 
-    Entity* ent1  = s1.newEntity(0);
+    Entity* ent1  = s1.newEntity(1);
     glm::vec3 side1 = {2.0f ,2.0f , 2.0f};
     // Create mesh for entity
     ent1->name = "Cube 01";
@@ -82,7 +83,7 @@ int main()
 
     // create Cube 02
     
-    Entity* ent2  = s1.newEntity(0);
+    Entity* ent2  = s1.newEntity(2);
     glm::vec3 side2 = {1.0f ,1.0f , 1.0f};
     // Create mesh for entity
     ent2->name = "Cube 02";
@@ -96,7 +97,8 @@ int main()
 
     ent2->isWireFrame = false;
     ent2->entitybody->isCollider = true;
-
+    ent2->entitybody->position = {5.0f, 5.0f,5.0f};
+ 
 
  
     ///////////////////////////////////////////////////////
@@ -184,6 +186,7 @@ int main()
         unsigned int lightposloc = glGetUniformLocation(program,"lightpos");
         glUniform3fv(lightposloc,1,glm::value_ptr(cam.campos));
 
+        // Physics Loop
         if(!isPaused)
         {
             for (Entity* ent : s1.entities)
@@ -214,6 +217,42 @@ int main()
                 }
             }
         }   
+
+        // Collision Detection.
+        for (Entity* ent1 : s1.entities)
+        {
+            
+            bool collision_status = false;
+
+            if (ent1->entitybody->isCollider)
+            {
+                for (Entity* ent2 : s1.entities)
+                {
+                    
+                    if (ent2->entitybody->isCollider)
+                    {
+                        if (ent1->id == ent2->id)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            collision_status = ent1->entitybody->checkSAT(ent2->entitybody);
+                        }
+                        if(collision_status)
+                        {
+                            ent1->col = {1.0f,0.0f,0.0f};
+                            ent2->col = {1.0f,0.0f,0.0f};
+                        }
+                        else
+                        {
+                            ent1->col = {1.0f,1.0f,1.0f};
+                            ent2->col = {1.0f,1.0f,1.0f};
+                        }
+                    }
+                }
+            }
+        }
 
         for (Entity* ent : s1.entities)
         {

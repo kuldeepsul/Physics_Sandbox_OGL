@@ -85,7 +85,7 @@ struct rigidbody
 
 
     // Collision Utils
-    std::vector <glm::vec3> getvertexdata() const;
+    std::vector <glm::vec3> getvertexdata();
     std::vector <glm::vec3> getSATaxes(const std::vector <glm::vec3> &vertdataA , const std::vector <glm::vec3> &vertdataB) const;
     glm::vec2 getMinMaxprojection(const glm::vec3 &axis, const std::vector <glm::vec3> & vertexdata) const;
     float getaxispenetration(const glm::vec3& axis,const std::vector <glm::vec3>& vertdataA , const std::vector<glm::vec3>& vertdataB) const;
