@@ -1,6 +1,99 @@
 #include "shapes.h"
 #define PI 3.14159265358979323846
 
+///////////////////////////////////////////////////////////
+//////          Geometry Helper function        //////////
+
+static float ClosestPtSegementSegment                       // Return Distance squared between the closest point on segement.
+(
+const glm::vec3 &p1 , const glm::vec3 &q1 ,
+const glm::vec3 &p2 , const glm::vec3 &q2,
+glm::vec3 &c1 , glm::vec3 &c2
+)
+{
+    // Calculating required quantities.
+    glm::vec3 d1 = q1 - p1 ;
+    glm::vec3 d2 = q2 - p2 ;
+    glm::vec3 r  = p1 - p2 ;
+
+    float a  = glm::dot (d1,d1);
+    float b  = glm::dot (d1,d2);
+    float c  = glm::dot (d1,r);
+    float f  = glm::dot (d2,r);
+    float e  = glm::dot (d2,d2);
+
+    float s , t ;
+
+    // Checking cases if segments S1 & S2 both are of zero length
+    if (a <= FLT_EPSILON && e <= FLT_EPSILON)
+    {
+        s = t = 0.0f ;
+        c1 = p1 ;
+        c2 = p2 ;
+        return glm::dot((c2 - c1) , (c2 - c1));
+    }
+
+    if( a <= FLT_EPSILON )
+    {
+        s = 0.0f ;
+        t = f / e ;
+        t = glm::clamp( t , 0.0f , 1.0f );
+    }
+    else
+    {
+        if( e <= FLT_EPSILON)
+        {
+            t = 0.0f ;
+            s = -c / a ;
+            s = glm::clamp( s , 0.0f , 1.0f);            
+        }
+        else
+        {
+            // General case when both segments of non zero length.
+            // First we find the closest point on lines L1 and L2 , and check if they lie on segment.
+            float denom = (a * e) - (b * b);
+            if( denom != 0.0f )
+            {
+                s = ((b * f) - (e * c))/denom;
+                s = glm::clamp( s , 0.0f , 1.0f);
+            }
+            else
+            {
+                // If the lines are parallel , we pick an arbitrary point on segment S1 , and find point on S2 closest to it .
+                // In this case we pick s = 0.0f , that is the lowermost end of the segment S1.
+                s = 0.0f;
+            }
+        }
+    }
+            
+    t =( (b * s) + f) / c ;
+
+    // If t lies [0,1] then we are done , if not then we clamp t , and recompute s , that is the closest point to current t .
+
+    if( t < 0.0f)
+    {
+        t = 0.0f ;
+        s = (-c / a);
+        s = glm::clamp( s , 0.0f ,1.0f);
+    }
+    else if ( t > 1.0f )
+    {
+        t = 1.0f ;
+        s = ((b - c) / a);
+        s = glm::clamp( s , 0.0f ,1.0f);
+    }
+
+    c1 = p1 + s * d1 ;
+    c2 = p2 + t * d2 ;
+    return glm::dot((c2 - c1),(c2 - c1));
+        
+    
+
+}
+
+
+////////////////////////////////////////////////////////////
+
 /////////////////////////////////////////////////////////////
 //////////        Mesh Generation  function /////////////////
 
@@ -95,6 +188,88 @@ void mesh::gencuboidmesh(glm::vec3 sides)
     this->genBufferObjects();
 
 };
+
+void mesh::gengridmesh(float interval)
+{
+    float size = 100.0f;
+    int samples = size / interval ;
+    float hsize = size * 0.5f ;
+
+    glm::vec3 origin  = {0.0f,0.0f,0.0f};
+    glm::vec3 lextent = origin - glm::vec3 {hsize,0.0f,hsize};
+    glm::vec3 hextent = origin + glm::vec3 {hsize,0.0f,hsize};
+
+    std::vector <float> vertexdata;
+    int count = 0 ;
+    
+    for (int i {0} ; i <= samples ; i++)
+    {
+        glm::vec3 xinc1 = lextent + glm::vec3 {interval*i,0.0f,0.0f};
+        glm::vec3 xinc2 = lextent + glm::vec3 {interval*i,0.0f,size};
+
+        glm::vec3 zinc1 = lextent + glm::vec3 {0.0f,0.0f,interval*i};
+        glm::vec3 zinc2 = lextent + glm::vec3 {size,0.0f,interval*i};
+
+        vertexdata.push_back(xinc1.x);
+        vertexdata.push_back(xinc1.y);
+        vertexdata.push_back(xinc1.z);
+        vertexdata.push_back(xinc2.x);
+        vertexdata.push_back(xinc2.y);
+        vertexdata.push_back(xinc2.z);
+
+        vertexdata.push_back(zinc1.x);
+        vertexdata.push_back(zinc1.y);
+        vertexdata.push_back(zinc1.z);
+        vertexdata.push_back(zinc2.x);
+        vertexdata.push_back(zinc2.y);
+        vertexdata.push_back(zinc2.z);
+
+        count += 4;
+        
+    }
+    
+    // vertexdata = { -20.0f, 30.0f ,20.0f,
+    //                 -20.0f , 30.0f ,20.f,
+    //                 20.0f,30.0f,20.0f};
+
+    this->data = vertexdata;
+    this->vertexcount = count;
+
+    glGenBuffers(1,&this->VBO);
+    glGenVertexArrays(1,&this->VAO);
+
+    glBindVertexArray(this->VAO);
+    glBindBuffer(GL_ARRAY_BUFFER,this->VBO);
+    
+
+    glBufferData(GL_ARRAY_BUFFER,this->data.size()*sizeof(float),this->data.data(),GL_STATIC_DRAW);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),0);
+    glEnableVertexAttribArray(0);
+
+}
+
+void mesh::genvectormesh(const float& mag , const glm::vec3& dir , const glm::vec3& position)
+{
+    glm::vec3 start = position;
+    glm::vec3 end = position + mag * dir ;
+    this->data = { start.x  , start.y , start.z ,
+                   end.x    , end.y   , end.z  
+    };
+    this->vertexcount = 2 ;
+    
+
+    glGenVertexArrays(1,&this->VAO);
+    glGenBuffers(1,&this->VBO);
+
+    glBindVertexArray(this->VAO);
+    glBindBuffer(GL_ARRAY_BUFFER , this->VBO);
+
+    glBufferData(GL_ARRAY_BUFFER,this->data.size() * sizeof(float), this->data.data(),GL_STATIC_DRAW);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),0);
+    glEnableVertexAttribArray(0);
+
+        
+}
 
 void mesh::readobj(std::string path)
 {
@@ -232,7 +407,7 @@ Entity* Scene::newEntity(unsigned int id)
     return ent;
 }
 
-void Scene::newEntity(unsigned int id , shapetype s , glm::vec3 sides)
+Entity* Scene::newEntity(unsigned int id , shapetype s , glm::vec3 sides)
 {
     Entity* ent = new Entity(id);
 
@@ -246,6 +421,7 @@ void Scene::newEntity(unsigned int id , shapetype s , glm::vec3 sides)
     ent->entitybody = new rigidbody(shapetype::cube,sides);
     
     this->entities.push_back(ent);
+    return ent;
 };
 
 void Entity::updateModelMatrix()
@@ -433,6 +609,84 @@ void rigidbody::checkAABB(rigidbody* other)
     }
 };
 
+bool rigidbody::checkinrange(const float& val ,const float& range1,const float& range2)
+{
+    float dif1 = val - range1;
+    float dif2 = val - range2;
+
+    if (dif1 == 0 || dif2 == 0)
+    {
+        return false ;
+    }
+    if( dif1 > 0 && dif2 > 0 || dif1 < 0 && dif2 < 0)
+    {
+        return false;
+    }
+    else 
+    {
+        return true;
+    }
+
+}
+
+std::vector <bool> rigidbody::checkvertexinclusion(const std::vector <glm::vec3> &cubedataA , const std::vector <glm::vec3> &cubedataB)
+{
+    glm::vec3 axisA = cubedataA[0] - cubedataA[3];
+    glm::vec3 axisB = cubedataA[1] - cubedataA[0];
+    glm::vec3 axisC = cubedataA[3] - cubedataA[0];
+
+    axisA = glm::normalize(axisA);
+    axisB = glm::normalize(axisB);
+    axisC = glm::normalize(axisC);
+
+    float a1,a2,b1,b2,c1,c2;
+    a1 = glm::dot(cubedataA[4],axisA);
+    a2 = glm::dot(cubedataA[0],axisA);
+    b1 = glm::dot(cubedataA[0],axisB);
+    b2 = glm::dot(cubedataA[1],axisB);   
+    c1 = glm::dot(cubedataA[0],axisC);
+    c2 = glm::dot(cubedataA[3],axisC);
+
+    std::vector <bool> results;
+    for (int i {0}; i < 8 ; i ++ )
+    {
+        float valA = glm::dot(cubedataB[i],axisA);
+        float valB = glm::dot(cubedataB[i],axisB);
+        float valC = glm::dot(cubedataB[i],axisC);
+
+        bool checkA = rigidbody::checkinrange(valA,a1,a2);
+        bool checkB = rigidbody::checkinrange(valB,b1,b2);
+        bool checkC = rigidbody::checkinrange(valC,c1,c2);
+
+        if (checkA && checkB && checkC )
+        {
+            results.push_back(true);
+        }
+        else
+        {
+            results.push_back(false);
+        }
+    }
+    return results;
+}
+
+void rigidbody::getcontactpoints(rigidbody* other)
+{
+    std::vector <glm::vec3> vertdataA ;
+    std::vector <glm::vec3> vertdataB ;
+
+    vertdataA = this->getvertexdata();
+    vertdataB = other->getvertexdata();
+
+    std::vector <bool> vertexBcubeA;
+    std::vector <bool> vertexAcubeB;
+
+    vertexAcubeB = rigidbody::checkvertexinclusion(vertdataB,vertdataA);
+    vertexBcubeA = rigidbody::checkvertexinclusion(vertdataA,vertdataB);
+
+
+}
+
 std::vector <glm::vec3> rigidbody::getvertexdata()
 {
     glm::vec3 hside = this->hcubeside;
@@ -462,18 +716,6 @@ std::vector <glm::vec3> rigidbody::getvertexdata()
     vertexdata.push_back(glm::mat3(rotation_matrix)*vert6 + this->position);
     vertexdata.push_back(glm::mat3(rotation_matrix)*vert7 + this->position);
     vertexdata.push_back(glm::mat3(rotation_matrix)*vert8 + this->position);
-
-
-    
-    
-   
-
-    // Apply World Transforms .
-    for (int i {0} ; i < vertexdata.size() ; i++)
-    {
-        std::cout<< vertexdata[i].x << "," << vertexdata[i].y << "," << vertexdata[i].z << "," << std::endl;
-    }
-
 
     return vertexdata;
 
@@ -516,11 +758,8 @@ std::vector <glm::vec3> rigidbody::getSATaxes(const std::vector <glm::vec3> &ver
         for (auto vecB : norm_cubeB)
         {
             glm::vec3 temp = glm::cross(vecA,vecB);
-            if(temp.x < 1.0e-12 && temp.x < 1.0e-12 && temp.x < 1.0e-12 )
+            if(glm::length(temp) < 1.0e-06 )
             {
-                ///std::cout << "Zero axis found" << std::endl;
-                temp = vecA;
-                SATaxes.push_back(temp);
                 continue;
             }
             else
@@ -554,30 +793,23 @@ glm::vec2 rigidbody::getMinMaxprojection(const glm::vec3 &axis, const std::vecto
         min  = std::min (min,proj);
         max = std::max (max,proj);
     }
-    // std::cout << std::endl;
-    
-    // std::cout << "Min : " << min << " , Max : " << max << std::endl;
 
     return glm::vec2(min,max);
 }
 
 float rigidbody::getaxispenetration (const glm::vec3& axis, const std::vector <glm::vec3>& vertdataA ,const std::vector <glm::vec3>& vertdataB) const
 {
-    std::cout << "Penetration Detection per axis." << std::endl;
+    //std::cout << "Penetration Detection per axis." << std::endl;
 
     glm::vec2 projA = rigidbody::getMinMaxprojection(axis,vertdataA);
     glm::vec2 projB = rigidbody::getMinMaxprojection(axis,vertdataB);
 
-    std::cout << "Complete!" << std::endl;
+    //std::cout << "Complete!" << std::endl;
 
     float penetration = 0 ;
-    if (projA.x <= projB.x)
+    if (projA.x > projB.y || projB.x > projA.y)
     {
-        penetration = projB.x - projA.y;
-    }
-    else if (projB.x <= projA.x)
-    {
-        penetration = projA.x - projB.y;
+        penetration = std::min (projA.y,projB.y) - std::max (projB.x ,projA.x);
     }
 
     //std::cout << penetration << std::endl;
@@ -586,7 +818,6 @@ float rigidbody::getaxispenetration (const glm::vec3& axis, const std::vector <g
 
 bool rigidbody::checkSAT(rigidbody* other)
 {
-    std::cout << "Checking sat collisions" << std::endl;
     std::vector <glm::vec3> vertdataA ;
     std::vector <glm::vec3> vertdataB ;
 
@@ -597,70 +828,33 @@ bool rigidbody::checkSAT(rigidbody* other)
     // Create Normal of faces for SAT Checks.
     
     std::vector <glm::vec3> SATaxes = this->getSATaxes(vertdataA,vertdataB);
-    std::vector <float> axispen ; 
+    bool collision = true ;
+    float min_collision = 0;
+    glm::vec3 collisionnormal;
     
-    
-    
-    int k = 1 ;
-    for (auto& axis  : SATaxes)
+    for (int i {0} ; i < SATaxes.size() ; i++)
     {
+        glm::vec2 projA = rigidbody::getMinMaxprojection(SATaxes[i],vertdataA);
+        glm::vec2 projB = rigidbody::getMinMaxprojection(SATaxes[i],vertdataB);
 
-        float temp = rigidbody::getaxispenetration(axis,vertdataA,vertdataB);
-        if (temp >= 0)
+        //std::cout << "Complete!" << std::endl;
+
+        float penetration = 0 ;
+        if (projA.x > projB.y || projB.x > projA.y)
         {
-            axispen.push_back(-1.0f);
+            return false;
         }
-        else if (temp < 0)
+
+        penetration = std::min (projA.y,projB.y) - std::max (projB.x ,projA.x);
+        
+        if (penetration < min_collision)
         {
-            axispen.push_back(-temp);
+            min_collision = penetration;
+            collisionnormal = SATaxes[i];
         }
+        
     }
-
     
-
-    bool collision = true;
-    float min_collision = 0 ;
-    int collision_axis = -1 ;
-    int i {0} ;
-
-    
-    while (collision)
-    {
-        if( i == axispen.size())
-        {
-            break;
-        }
-
-        if (axispen[i] < 0.0f)
-        {
-            collision = false;
-        }
-        else 
-        {
-           
-            if( i == 0)
-            {
-                min_collision = axispen[i];
-            }
-            else 
-            {
-                if (min_collision  > axispen[i])
-                {
-                    min_collision = axispen[i];
-                    collision_axis = i ;
-                }
-            }
-            i++;
-        }
-    }
-    if (collision)
-    {
-        std::cout << "collision detected!" << std::endl;
-    }
-    else
-    {
-        std::cout << "--" << std::endl;
-    }
     return collision;
 
 }
@@ -675,4 +869,118 @@ void rigidbody::updateorientation(float angle,glm::vec3 axisofrotation)
     glm::vec3 naxis = glm::normalize(axisofrotation);
 
     this->orientation = { s * naxis.x , s * naxis.y , s * naxis.z , c }; 
+};
+
+
+   
+
+/////////////////////////////////////
+//              Utils           ////
+
+void Scene::showgrids(float interval)
+{
+    Entity* ent = this->newEntity(100);
+    mesh* m = new mesh();
+    m->gengridmesh(interval);
+    ent->entitymesh = m ;
+    ent->col = {0.3f,0.3f,0.3f};
+    ent->isWireFrame =false;
+    ent->model_matrix = glm::mat4(1.0f);
+    ent->name = "Grid";
+
+};
+
+void rigidbody::createcontactbodies(Scene* s2)
+{
+    Entity* ent = s2->newEntity(100,shapetype::cube,glm::vec3 {0.3f,0.3f,0.3f});
+    ent->entitybody->isCollider = false;
+    ent->col = {0.0f,1.0f,0.0f};
+    ent->isWireFrame = false;
+    ent->entitybody->position = this->position;
+    this->contactbody = ent->entitybody;
+    ent->updateModelMatrix();
+    
+    ent->name = "contactbody";
+};
+
+void rigidbody::updatecontact()
+{
+    this->contactbody->position = this->bodycontact->point;
+}
+
+
+////////////////////////////////////////////////////
+///////             Shader Function         /////////
+///////////////////////////////////////////////////
+
+std::string readShaderFile(std::string path)
+{
+    std::fstream file (path);
+
+    if(!file.is_open())
+    {
+        throw std::runtime_error("FATAL ERROR : Shader Path not found");
+    }
+
+    std::stringstream s;
+    s << file.rdbuf();
+    std::string shadercode = s.str();
+
+    return shadercode;
+}
+
+void checkShaderCompilation(unsigned int &shader)
+{
+    int success;
+    char infolog [512];
+
+    glGetShaderiv(shader,GL_COMPILE_STATUS,&success);
+
+    if(!success)
+    {
+        glGetShaderInfoLog(shader,512,nullptr,infolog);
+        std::cout << "Shader Compilation Error : " << infolog << std::endl;
+    }
+}
+
+unsigned int getShaderProgram(std::string& path_vert,std::string path_frag)
+{
+    unsigned int fragment_shader;
+    unsigned int vertex_shader;
+    vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    std::filesystem::path root = std::filesystem::path(__FILE__).parent_path().parent_path();
+
+    std::string frag_path = (root/path_frag).string();
+    std::string vert_path = (root/path_vert).string();
+
+    std::string vertcode = readShaderFile(vert_path);
+    std::string fragcode = readShaderFile(frag_path);
+
+    const char* vertsource = vertcode.c_str();
+    const char* fragsource = fragcode.c_str();
+
+    glShaderSource(vertex_shader,1,&vertsource,nullptr);
+    glShaderSource(fragment_shader,1,&fragsource,nullptr);
+
+    glCompileShader(vertex_shader);
+    glCompileShader(fragment_shader);
+
+    checkShaderCompilation(vertex_shader);
+    checkShaderCompilation(fragment_shader);
+
+    unsigned int program;
+    program = glCreateProgram();
+
+    glAttachShader(program,vertex_shader);
+    glAttachShader(program,fragment_shader);
+
+    glLinkProgram(program);
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+    return program;
+
+
 };

@@ -41,8 +41,17 @@ int main()
     cam.camfront = {0.0f, 0.0f ,3.0f};
     cam.updateViewMatrix();
     ///////////////////////////////////////////////
+    std::string path_vert_flat =  "shader/Vertex_shader_flat.glsl";
+    std::string path_vert = "shader/Vertex_shader.glsl";
+    std::string path_frag_lighting = "shader/Lighting_shader.glsl";
+    std::string path_frag_debug = "shader/debug_shader.glsl";
+    std::string path_frag_flat = "shader/flat_shader.glsl";
 
     Scene s1;
+    s1.shaderprogram = getShaderProgram(path_vert,path_frag_lighting);
+    Scene Utils;
+    //Utils.showgrids(4.0f);
+    Utils.shaderprogram = getShaderProgram(path_vert_flat,path_frag_flat);
 
     //////////////////////////////////////////////////////
     // Manual Setup
@@ -62,6 +71,8 @@ int main()
 
     ent->isWireFrame = true;
     ent->entitybody->isCollider = false;
+    ent->entitybody->position = {0.0f,5.0f,0.0f};
+    ent->updateModelMatrix();
     s1.scene_bound = ent;
 
     // create Cube 01
@@ -80,6 +91,8 @@ int main()
 
     ent1->isWireFrame = false;
     ent1->entitybody->isCollider = true;
+    ent1->entitybody->position = {-3.0f,3.0f,0.0f};
+    ent1->entitybody->createcontactbodies(&Utils);
 
     // create Cube 02
     
@@ -97,23 +110,10 @@ int main()
 
     ent2->isWireFrame = false;
     ent2->entitybody->isCollider = true;
-    ent2->entitybody->position = {5.0f, 5.0f,5.0f};
+    ent2->entitybody->position = {2.0f, 3.0f,0.0f};
  
+    /////////////////////////////////////////////////////////////////
 
- 
-    ///////////////////////////////////////////////////////
-    // Shaders 
-
-    std::string path_vert = "shader/Vertex_shader.glsl";
-    std::string path_frag = "shader/Lighting_shader.glsl";
-
-    unsigned int program = getShaderProgram(path_vert,path_frag);
-
-    // Perspective 
-    glm::mat4 Presp = glm::perspective(glm::radians(90.0f), (1920.0f/1080.0f),0.1f,100.0f);
-    unsigned int persloc = glGetUniformLocation(program,"Perspective_mat");
-    glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(Presp));
-    
 
     glEnable(GL_DEPTH_TEST);
     bool isPaused {false} ;
@@ -122,9 +122,13 @@ int main()
     static float grav {0.0f};
     cursormode currentmode = cursormode::camera_mode;
     static bool firstmouse = true ;
+    bool drawcontact = true;
 
 
     gui* ui = new gui();
+
+    // Perspective Matrix.
+    glm::mat4 Presp = glm::perspective(glm::radians(90.0f), (1920.0f/1080.0f),0.1f,100.0f);
 
 
     while (!glfwWindowShouldClose(window))
@@ -178,14 +182,6 @@ int main()
         }
         
 
-        // View Matrix Based on  Camera Controls
-        unsigned int viewloc = glGetUniformLocation(program,"View_mat");
-        glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(cam.viewmatrix));
-
-        // Camera as lightsource
-        unsigned int lightposloc = glGetUniformLocation(program,"lightpos");
-        glUniform3fv(lightposloc,1,glm::value_ptr(cam.campos));
-
         // Physics Loop
         if(!isPaused)
         {
@@ -238,16 +234,26 @@ int main()
                         else
                         {
                             collision_status = ent1->entitybody->checkSAT(ent2->entitybody);
+
                         }
                         if(collision_status)
                         {
                             ent1->col = {1.0f,0.0f,0.0f};
                             ent2->col = {1.0f,0.0f,0.0f};
+                            if(ent->entitybody->bodycontact)
+                            {
+                                ent->entitybody->updatecontact();
+                            }
+                            
                         }
                         else
                         {
                             ent1->col = {1.0f,1.0f,1.0f};
                             ent2->col = {1.0f,1.0f,1.0f};
+                            if(ent->entitybody->bodycontact)
+                            {
+                                ent->entitybody->contactbody->position = ent->entitybody->position;
+                            }
                         }
                     }
                 }
@@ -256,18 +262,34 @@ int main()
 
         for (Entity* ent : s1.entities)
         {
+            glUseProgram(s1.shaderprogram);
+            // Perspective 
+            unsigned int persloc = glGetUniformLocation(s1.shaderprogram,"Perspective_mat");
+            glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(Presp));
+
+            // View Matrix Based on  Camera Controls
+            unsigned int viewloc = glGetUniformLocation(s1.shaderprogram,"View_mat");
+            glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(cam.viewmatrix));
+
+            // Camera as lightsource
+            unsigned int lightposloc = glGetUniformLocation(s1.shaderprogram,"lightpos");
+            glUniform3fv(lightposloc,1,glm::value_ptr(cam.campos));
+
             // Passing Entity color as a uniform.
-            unsigned int objcolloc = glGetUniformLocation(program,"objcol");
+            unsigned int objcolloc = glGetUniformLocation(s1.shaderprogram,"objcol");
             glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(ent->col)));
 
             // Passing Entity Model Matrix as a uniform. 
-            unsigned int modelloc = glGetUniformLocation(program,"Model_mat");
+            unsigned int modelloc = glGetUniformLocation(s1.shaderprogram,"Model_mat");
             glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
+
 
             if (!ent->isWireFrame)
             {
                 glBindVertexArray(ent->entitymesh->VAO);
                 glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+
+        
             }
             else
             {
@@ -275,9 +297,44 @@ int main()
                 glBindVertexArray(ent->entitymesh->VAO);
                 glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
                 glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+
             }
 
             
+        }
+
+        for (Entity* ent : Utils.entities)
+        {
+            glUseProgram(Utils.shaderprogram);
+            // Perspective 
+            unsigned int persloc = glGetUniformLocation(Utils.shaderprogram,"Perspective_mat");
+            glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(Presp));
+
+            // View Matrix Based on  Camera Controls
+            unsigned int viewloc = glGetUniformLocation(Utils.shaderprogram,"View_mat");
+            glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(cam.viewmatrix));
+
+            // Passing Entity color as a uniform.
+            unsigned int objcolloc = glGetUniformLocation(Utils.shaderprogram,"objcol");
+            glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(ent->col)));
+
+            // Passing Entity Model Matrix as a uniform. 
+            unsigned int modelloc = glGetUniformLocation(Utils.shaderprogram,"Model_mat");
+            glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
+
+            if (ent->isWireFrame)
+            {
+                glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+                glBindVertexArray(ent->entitymesh->VAO);
+                glDrawArrays(GL_LINES,0,ent->entitymesh->vertexcount);
+                glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+            }
+            else
+            {
+                glBindVertexArray(ent->entitymesh->VAO);
+                glDrawArrays(GL_LINES,0,ent->entitymesh->vertexcount);
+            }
+
         }
 
         glfwPollEvents();
