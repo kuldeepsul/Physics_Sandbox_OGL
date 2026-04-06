@@ -92,6 +92,8 @@ glm::vec3 &c1 , glm::vec3 &c2
 }
 
 
+
+
 ////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////
@@ -596,45 +598,84 @@ bool CollisionFunc::checkinrange(const float& val ,const float& range1,const flo
 
 }
 
-std::vector <bool> CollisionFunc::checkvertexinclusion(const std::vector <glm::vec3> &cubedataA , const std::vector <glm::vec3> &cubedataB)
+int CollisionFunc::checkvertexinclusion(const std::vector <glm::vec3> &cubedataA , const std::vector <glm::vec3> &cubedataB, const int &axis_id , const glm::vec3 &axis )
 {
-    glm::vec3 axisA = cubedataA[0] - cubedataA[3];
-    glm::vec3 axisB = cubedataA[1] - cubedataA[0];
-    glm::vec3 axisC = cubedataA[3] - cubedataA[0];
+    float min , max ;
+ 
+    if (axis_id == 0)
+    {
+        min = glm::dot(cubedataA[4],axis);
+        max = glm::dot(cubedataA[0],axis);
+    }
+    else if (axis_id == 1)
+    {
+        min = glm::dot(cubedataA[0],axis);
+        max = glm::dot(cubedataA[1],axis);
+    }
+    else if (axis_id == 2)
+    {
+        min = glm::dot(cubedataA[0],axis);
+        max = glm::dot(cubedataA[3],axis);
+    }
 
-    axisA = glm::normalize(axisA);
-    axisB = glm::normalize(axisB);
-    axisC = glm::normalize(axisC);
 
-    float a1,a2,b1,b2,c1,c2;
-    a1 = glm::dot(cubedataA[4],axisA);
-    a2 = glm::dot(cubedataA[0],axisA);
-    b1 = glm::dot(cubedataA[0],axisB);
-    b2 = glm::dot(cubedataA[1],axisB);   
-    c1 = glm::dot(cubedataA[0],axisC);
-    c2 = glm::dot(cubedataA[3],axisC);
-
-    std::vector <bool> results;
     for (int i {0}; i < 8 ; i ++ )
     {
-        float valA = glm::dot(cubedataB[i],axisA);
-        float valB = glm::dot(cubedataB[i],axisB);
-        float valC = glm::dot(cubedataB[i],axisC);
+        float val = glm::dot(cubedataB[i],axis);
 
-        bool checkA = checkinrange(valA,a1,a2);
-        bool checkB = checkinrange(valB,b1,b2);
-        bool checkC = checkinrange(valC,c1,c2);
-
-        if (checkA && checkB && checkC )
+        if( val < max && val > min)
         {
-            results.push_back(true);
+           return i ;
+        }        
+    }
+    return -1;
+}
+
+std::pair <std::pair<int,int>,std::pair<int,int>> getcollisionedges(const std::vector <glm::vec3> &vertdataA , 
+                                                                                const std::vector <glm::vec3> &vertdataB , 
+                                                                                const glm::vec3 &axis , 
+                                                                                const int &axis_id
+)
+{
+    
+}
+
+
+glm::vec3 CollisionFunc::getcontactpoint(const std::vector <glm::vec3> &vertdataA , const std::vector <glm::vec3> &vertdataB , const glm::vec3 &axis , const int &axis_id)
+{
+    int vertid;
+    if (axis_id < 6)
+    {
+        // its a face to vertex collision.
+        if(axis_id < 3)
+        {
+            // vertex of second cube is penetrating into first cube.
+            vertid = checkvertexinclusion(vertdataA,vertdataB,axis_id,axis);
+            if(vertid == -1)
+            {
+                throw std::runtime_error("Unable to find collision point");
+            }
+            return vertdataB[vertid];
         }
         else
         {
-            results.push_back(false);
+            // vertex of first cube is penetrating into second cube.
+            vertid = checkvertexinclusion(vertdataA,vertdataB,axis_id - 3,axis);
+            if(vertid == -1)
+            {
+                throw std::runtime_error("Unable to find collision point");
+            }
+            return vertdataA[vertid];
         }
+        
     }
-    return results;
+    else
+    {
+        // its a edge to edge collision.
+        std::pair <std::pair<int,int> , std::pair<int,int>> edges_id;
+        edges_id = getcollisionedges(vertdataA,vertdataB,axis,axis_id);
+
+    }
 }
 
 std::vector <glm::vec3> CollisionFunc::getvertexdata(RigidBody* body)
@@ -785,6 +826,9 @@ bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2)
         }
         
     }
+
+
+
     contact conA , conB;
     conA.normal = collisionnormal;
     conB.normal = -collisionnormal;
@@ -826,6 +870,49 @@ Entity* Scene::newEntity(unsigned int id , ShapeType s , glm::vec3 sides)
     
     this->entities.push_back(ent);
     return ent;
+};
+
+void Scene::drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos)
+{
+    glUseProgram(this->shaderprogram);
+    // Perspective 
+    unsigned int persloc = glGetUniformLocation(this->shaderprogram,"Perspective_mat");
+    glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(persp));
+
+    // View Matrix Based on  Camera Controls
+    unsigned int viewloc = glGetUniformLocation(this->shaderprogram,"View_mat");
+    glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(view));
+
+    // Camera as lightsource
+    unsigned int lightposloc = glGetUniformLocation(this->shaderprogram,"lightpos");
+    glUniform3fv(lightposloc,1,glm::value_ptr(lightpos));
+
+    for (Entity* ent : this->entities)
+    {
+
+
+        // Passing Entity color as a uniform.
+        unsigned int objcolloc = glGetUniformLocation(this->shaderprogram,"objcol");
+        glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(ent->col)));
+
+        // Passing Entity Model Matrix as a uniform. 
+        unsigned int modelloc = glGetUniformLocation(this->shaderprogram,"Model_mat");
+        glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
+
+        if (ent->isWireFrame)
+        {
+            glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+            glBindVertexArray(ent->entitymesh->VAO);
+            glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+        }
+        else
+        {
+            glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+            glBindVertexArray(ent->entitymesh->VAO);
+            glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+        }
+
+    }
 };
 
 void Entity::updateModelMatrix()

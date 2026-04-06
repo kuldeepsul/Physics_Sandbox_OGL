@@ -254,88 +254,10 @@ int main()
             }
         }
 
-        for (Entity* ent : s1.entities)
-        {
-            glUseProgram(s1.shaderprogram);
-            // Perspective 
-            unsigned int persloc = glGetUniformLocation(s1.shaderprogram,"Perspective_mat");
-            glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(Presp));
-
-            // View Matrix Based on  Camera Controls
-            unsigned int viewloc = glGetUniformLocation(s1.shaderprogram,"View_mat");
-            glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(cam.viewmatrix));
-
-            // Camera as lightsource
-            unsigned int lightposloc = glGetUniformLocation(s1.shaderprogram,"lightpos");
-            glUniform3fv(lightposloc,1,glm::value_ptr(cam.campos));
-
-            // Passing Entity color as a uniform.
-            unsigned int objcolloc = glGetUniformLocation(s1.shaderprogram,"objcol");
-            glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(ent->col)));
-
-            // Passing Entity Model Matrix as a uniform. 
-            unsigned int modelloc = glGetUniformLocation(s1.shaderprogram,"Model_mat");
-            glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
-
-
-
-            if (!ent->isWireFrame)
-            {
-                glBindVertexArray(ent->entitymesh->VAO);
-                glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+        // Render Scenes.
+        s1.drawScene(Presp,cam.viewmatrix,cam.campos);
+        Utils.drawScene(Presp,cam.viewmatrix,cam.campos);
         
-            }
-            else
-            {
-                glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-                glBindVertexArray(ent->entitymesh->VAO);
-                glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
-                glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-
-            }
-            // if(ent->entitybody->cons.size())
-            // {
-            //     std::cout << "Showing contacts" << std::endl;
-            //     s1.showcontacts(ent->entitybody);
-            // }
-            // ent->entitybody->resolvecontacts();
-
-            
-        }
-
-        for (Entity* ent : Utils.entities)
-        {
-            glUseProgram(Utils.shaderprogram);
-            // Perspective 
-            unsigned int persloc = glGetUniformLocation(Utils.shaderprogram,"Perspective_mat");
-            glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(Presp));
-
-            // View Matrix Based on  Camera Controls
-            unsigned int viewloc = glGetUniformLocation(Utils.shaderprogram,"View_mat");
-            glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(cam.viewmatrix));
-
-            // Passing Entity color as a uniform.
-            unsigned int objcolloc = glGetUniformLocation(Utils.shaderprogram,"objcol");
-            glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(ent->col)));
-
-            // Passing Entity Model Matrix as a uniform. 
-            unsigned int modelloc = glGetUniformLocation(Utils.shaderprogram,"Model_mat");
-            glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
-
-            if (ent->isWireFrame)
-            {
-                glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-                glBindVertexArray(ent->entitymesh->VAO);
-                glDrawArrays(GL_LINES,0,ent->entitymesh->vertexcount);
-                glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-            }
-            else
-            {
-                glBindVertexArray(ent->entitymesh->VAO);
-                glDrawArrays(GL_LINES,0,ent->entitymesh->vertexcount);
-            }
-
-        }
 
         glfwPollEvents();
 

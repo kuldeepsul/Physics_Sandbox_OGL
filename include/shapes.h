@@ -35,6 +35,7 @@ struct GeomFunc
     const glm::vec3 &p2 , const glm::vec3 &q2,
     glm::vec3 &c1 , glm::vec3 &c2
     );
+
 };
 
 
@@ -123,11 +124,25 @@ struct CollisionFunc
     static glm::vec2 getMinMaxprojection(const glm::vec3 &axis, const std::vector <glm::vec3> & vertexdata);
     static bool checkinrange(const float& val ,const float& range1,const float& range2);
 
+    static glm::vec3 getcontactpoint(const std::vector <glm::vec3> &vertdataA , 
+                                    const std::vector <glm::vec3> &vertdataB ,
+                                    const glm::vec3 &axis , 
+                                    const int &axis_id
+    );
+
+    // Return pair of edges , represented by the pair of ids forming these edges.
+    static std::pair <std::pair<int,int>,std::pair<int,int>> getcollisionedges(const std::vector <glm::vec3> &vertdataA , 
+                                                                                const std::vector <glm::vec3> &vertdataB , 
+                                                                                const glm::vec3 &axis , 
+                                                                                const int &axis_id
+    );
+
     // Collisions
-    std::vector <bool> checkvertexinclusion(const std::vector <glm::vec3> &cubedataA , const std::vector <glm::vec3> &cubedataB);
+    static int checkvertexinclusion(const std::vector <glm::vec3> &cubedataA , const std::vector <glm::vec3> &cubedataB, const int &axis_id , const glm::vec3 &axis );
     static void checkboundcollision(RigidBody* body ,RigidBody* domain);
     static void checkAABB(RigidBody* body1 , RigidBody* body2);
     static bool checkSAT(RigidBody* body1 , RigidBody* body2);
+    
 
     
 };
@@ -183,9 +198,17 @@ class Scene
     Entity* newEntity(unsigned int id);
     Entity* newEntity(unsigned int id , ShapeType s , glm::vec3 sides);
 
+    void drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos);
+
     // Utils.
     void showgrids(float intervals);
     void showcontacts(RigidBody* body);
+
+};
+
+class DebugScene
+{
+    std::vector <Entity*> entities;
 
 };
 
