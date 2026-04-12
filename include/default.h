@@ -46,11 +46,17 @@ class gui
     bool OpenEntityCreationWindow {true};
     bool OpenEntityPropertiesWindow {false};
     bool OpenEntityUpdateWindow {false};
+    bool OpenDebugWindow{true};
 
     void EntityCreationWindow(float& grav,Scene* scene);
     void EntityPropertiesWindow(Scene* scene);
     void EntityUpdateWindow(Scene* scene);
+    void EntityDebugWindow(Scene* scene);
+    
+    
 
     void GetEntityProp(Scene* scene,int &id_param);
+    void ShowContactProperties(Scene* scene,int index);
+    
 };
 

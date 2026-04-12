@@ -401,6 +401,27 @@ void Mesh::genvectormesh(const float& mag , const glm::vec3& dir , const glm::ve
         
 }
 
+void Mesh::genbasismesh()
+{
+    this->data = {0.0f,0.0f,0.0f,1.0f,0.0f,0.0f,
+                0.0f,0.0f,0.0f,0.0f,1.0f,0.0f,
+                0.0f,0.0f,0.0f,0.0f,0.0f,1.0f
+    };
+
+    this->vertexcount = 6 ;
+
+    glGenVertexArrays(1,&this->VAO);
+    glGenBuffers(1,&this->VBO);
+
+    glBindVertexArray(this->VAO);
+    glBindBuffer(GL_ARRAY_BUFFER , this->VBO);
+
+    glBufferData(GL_ARRAY_BUFFER,this->data.size() * sizeof(float), this->data.data(),GL_STATIC_DRAW);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),0);
+    glEnableVertexAttribArray(0);
+
+}
+
 void Mesh::genfromobj(std::string path)
 {
     ObjReader::ReadMeshFromObjFile(this,path);
@@ -669,10 +690,10 @@ glm::vec3 CollisionFunc::getedgeedgecontactpoint(RigidBody* BodyA , RigidBody* B
 
     glm::vec3 conA , conB;
 
-    float d2 = GeomFunc::ClosestPtSegementSegment(edgeAlow,edgeBlow,edgeAhigh,edgeBhigh,conA,conB);
+    float d2 = GeomFunc::ClosestPtSegementSegment(edgeAlow,edgeAhigh,edgeBlow,edgeBhigh,conA,conB);
     glm::vec3 condir = conB - conA ;
 
-    glm::vec3 result = (glm::dot(condir,axis) > 0) ? conA : conB;
+    glm::vec3 result =  conB;
 
     return result;
 
@@ -704,6 +725,7 @@ glm::vec3 CollisionFunc::getcontactpoint(RigidBody* BodyA , RigidBody* BodyB , c
     else
     {
         // its a edge to edge collision.
+        std::cout << "Edge - Edge collision." << std::endl;
         collision_point = getedgeedgecontactpoint(BodyA,BodyB,axis,axis_id);
         return collision_point;
 
@@ -744,16 +766,19 @@ std::vector <glm::vec3> CollisionFunc::getvertexdata(RigidBody* body)
 
 }
 
-std::vector <glm::vec3> CollisionFunc::getSATaxes(const std::vector <glm::vec3> &vertdataA ,const std::vector <glm::vec3> &vertdataB) 
+std::vector <glm::vec3> CollisionFunc::getSATaxes(const RigidBody* bodyA ,const RigidBody* bodyB) 
 {
-    glm::vec3 normA1 =  vertdataA[0] - vertdataA[4];
-    glm::vec3 normA2 =  vertdataA[1] - vertdataA[0];
-    glm::vec3 normA3 =  vertdataA[3] - vertdataA[0];
+    glm::mat3 modelA = glm::mat3_cast(bodyA->orientation);
+    glm::mat3 modelB = glm::mat3_cast(bodyB->orientation);
+
+    glm::vec3 normA1 =  glm::normalize(modelA[0]);
+    glm::vec3 normA2 =  glm::normalize(modelA[1]);
+    glm::vec3 normA3 =  glm::normalize(modelA[2]);
 
     
-    glm::vec3 normB1 =  vertdataB[0] - vertdataB[4];
-    glm::vec3 normB2 =  vertdataB[1] - vertdataB[0];
-    glm::vec3 normB3 =  vertdataB[3] - vertdataB[0];
+    glm::vec3 normB1 =  glm::normalize(modelB[0]);
+    glm::vec3 normB2 =  glm::normalize(modelB[1]);
+    glm::vec3 normB3 =  glm::normalize(modelB[2]);
 
     // Side Normals of first cube.
     normA1 = glm::normalize(normA1);
@@ -767,12 +792,11 @@ std::vector <glm::vec3> CollisionFunc::getSATaxes(const std::vector <glm::vec3> 
     std::vector <glm::vec3> norm_cubeA  = {normA1,normA2,normA3};
     std::vector <glm::vec3> norm_cubeB  = {normB1,normB2,normB3};
 
-        std::vector <glm::vec3> SATaxes = {
-        // First Cube
-        normA1, normA2, normA3,     
-        // Secong Cube
-        normB1, normB2, normB3,
-        // Cross Axes
+    std::vector <glm::vec3> SATaxes = {
+    // First Cube
+    normA1, normA2, normA3,     
+    // Secong Cube
+    normB1, normB2, normB3,
     };
 
     // Cross Normals.
@@ -792,7 +816,7 @@ std::vector <glm::vec3> CollisionFunc::getSATaxes(const std::vector <glm::vec3> 
             
         }
     }
-    //std::cout << "SAT axed formed " << std::endl;
+    //std::cout << "SAT axed formed : " << SATaxes.size() << std::endl;
     return SATaxes;
 
 }
@@ -820,7 +844,7 @@ glm::vec2 CollisionFunc::getMinMaxprojection(const glm::vec3 &axis, const std::v
     return glm::vec2(min,max);
 }
 
-bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <contact*> condata)
+bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <contact*> &condata)
 {
     std::vector <glm::vec3> vertdataA ;
     std::vector <glm::vec3> vertdataB ;
@@ -831,11 +855,12 @@ bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <co
 
     // Create Normal of faces for SAT Checks.
     
-    std::vector <glm::vec3> SATaxes = getSATaxes(vertdataA,vertdataB);
+    std::vector <glm::vec3> SATaxes = getSATaxes(body1,body2);
     bool collision = true ;
     float min_collision = 0;
     glm::vec3 collisionnormal;
     int axisid = 0 ;
+    bool first_check = true;
     
     for (int i {0} ; i < SATaxes.size() ; i++)
     {
@@ -851,6 +876,12 @@ bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <co
         }
 
         penetration = std::min (projA.y,projB.y) - std::max (projB.x ,projA.x);
+
+        if (first_check)
+        {
+            min_collision = penetration;
+            first_check = false;
+        }
         
         if (penetration < min_collision)
         {
@@ -865,6 +896,13 @@ bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <co
     if(glm::dot(dir,collisionnormal) < 0)
     {
         collisionnormal = -collisionnormal;
+    }
+
+    if(collision)
+    {
+        std::cout << "Collision axis ID : " << axisid << std::endl;
+        std::cout << "Collision Normal : " << "("<< collisionnormal.x << ","
+        << collisionnormal.y << "," << collisionnormal.z << ")" << std::endl;
     }
 
 
@@ -914,7 +952,7 @@ Entity* Scene::newEntity(unsigned int id , ShapeType s , glm::vec3 sides)
     return ent;
 };
 
-void Scene::drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos)
+void Scene::drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive)
 {
     glUseProgram(this->shaderprogram);
     // Perspective 
@@ -945,13 +983,13 @@ void Scene::drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos)
         {
             glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
             glBindVertexArray(ent->entitymesh->VAO);
-            glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+            glDrawArrays(gl_primitive,0,ent->entitymesh->vertexcount);
         }
         else
         {
             glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
             glBindVertexArray(ent->entitymesh->VAO);
-            glDrawArrays(GL_TRIANGLES,0,ent->entitymesh->vertexcount);
+            glDrawArrays(gl_primitive,0,ent->entitymesh->vertexcount);
         }
 
     }
@@ -1009,12 +1047,152 @@ void Scene::showgrids(float interval)
 
 void Scene::resolvecontacts()
 {
+    delete this->contactmesh;
+    this->contactmesh = nullptr;
+
     for(contact* con : this->contacts)
     {
-        std::cout << "resolving contact. " << std::endl;
         delete con;
+        con = nullptr;
+    }
+
+    for (Mesh* mvec : this->debugvectors)
+    {
+        delete mvec;
+        mvec = nullptr;
     }
     this->contacts.clear();
+    this->debugvectors.clear();
+}
+
+void Scene::drawcontacts(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive)
+{
+    this->contactmesh= new Mesh();
+    contactmesh->gencuboidmesh(glm::vec3{0.1f,0.1f,0.1f});
+
+    glUseProgram(this->shaderprogram);
+    // Perspective 
+    unsigned int persloc = glGetUniformLocation(this->shaderprogram,"Perspective_mat");
+    glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(persp));
+
+    // View Matrix Based on  Camera Controls
+    unsigned int viewloc = glGetUniformLocation(this->shaderprogram,"View_mat");
+    glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(view));
+
+    // Camera as lightsource
+    unsigned int lightposloc = glGetUniformLocation(this->shaderprogram,"lightpos");
+    glUniform3fv(lightposloc,1,glm::value_ptr(lightpos));
+
+    for(contact* con : this->contacts)
+    {
+
+        // Model Matrix.
+        glm::mat4 modelmat (1.0f);
+        modelmat = modelmat * glm::translate(con->point);
+
+        // color
+        glm::vec3 color = {0.0f,1.0f,0.0f};
+
+        // Passing Entity color as a uniform.
+        unsigned int objcolloc = glGetUniformLocation(this->shaderprogram,"objcol");
+        glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(color)));
+
+        // Passing Entity Model Matrix as a uniform. 
+        unsigned int modelloc = glGetUniformLocation(this->shaderprogram,"Model_mat");
+        glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(modelmat));
+
+        glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+        glBindVertexArray(this->contactmesh->VAO);
+        glDrawArrays(gl_primitive,0,this->contactmesh->vertexcount);
+
+        // Creating Contact vector.
+        Mesh* mvec = new Mesh();
+        mvec->genvectormesh(2.0f,con->normal,con->point);
+        this->debugvectors.push_back(mvec);
+
+        glm::mat4 model_mat_vec (1.0f);
+
+        // Passing Entity Model Matrix as a uniform. 
+        glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(model_mat_vec));
+
+        glLineWidth(3.0f);
+
+        glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+        glBindVertexArray(mvec->VAO);
+        glDrawArrays(GL_LINES,0,mvec->vertexcount);
+
+        glLineWidth(1.0f);
+
+        
+    }
+    
+}
+
+void Scene::drawobjectbasisvectors(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive)
+{
+    Mesh* xvec = new Mesh();
+    Mesh* yvec = new Mesh();
+    Mesh* zvec = new Mesh();
+    glm::vec3 origin = {0.0f,0.0f,0.0f};
+    xvec->genvectormesh(5.0f,glm::vec3 {1.0f,0.0f,0.0f},origin);
+    yvec->genvectormesh(5.0f,glm::vec3 {0.0f,1.0f,0.0f},origin);
+    zvec->genvectormesh(5.0f,glm::vec3 {0.0f,0.0f,1.0f},origin);
+
+    this->debugvectors.push_back(xvec);
+    this->debugvectors.push_back(yvec);
+    this->debugvectors.push_back(zvec);
+
+    glUseProgram(this->shaderprogram);
+    // Perspective 
+    unsigned int persloc = glGetUniformLocation(this->shaderprogram,"Perspective_mat");
+    glUniformMatrix4fv(persloc,1,GL_FALSE,glm::value_ptr(persp));
+
+    // View Matrix Based on  Camera Controls
+    unsigned int viewloc = glGetUniformLocation(this->shaderprogram,"View_mat");
+    glUniformMatrix4fv(viewloc,1,GL_FALSE,glm::value_ptr(view));
+
+    // Camera as lightsource
+    unsigned int lightposloc = glGetUniformLocation(this->shaderprogram,"lightpos");
+    glUniform3fv(lightposloc,1,glm::value_ptr(lightpos));
+
+    for (Entity* ent : this->entities)
+    {
+        if(ent == this->scene_bound)
+        {
+            continue;
+        }
+        glm::vec3 colx = {1.0f,0.0f,0.0f};
+        glm::vec3 coly = {0.0f,1.0f,0.0f};
+        glm::vec3 colz = {0.0f,0.0f,1.0f};
+
+        // Passing Entity Model Matrix as a uniform. 
+        unsigned int modelloc = glGetUniformLocation(this->shaderprogram,"Model_mat");
+        glUniformMatrix4fv(modelloc,1,GL_FALSE,glm::value_ptr(ent->model_matrix));
+
+        // Passing Entity color as a uniform.
+        unsigned int objcolloc = glGetUniformLocation(this->shaderprogram,"objcol");
+        
+        std::cout << "Drawing Basis Vectors" << std::endl;
+        glLineWidth(3.0f);
+        glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+
+        glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(colx)));
+
+        glBindVertexArray(xvec->VAO);
+        glDrawArrays(GL_LINES,0,xvec->vertexcount);
+
+        glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(coly)));
+
+        glBindVertexArray(yvec->VAO);
+        glDrawArrays(GL_LINES,0,yvec->vertexcount);
+
+        glUniform3fv(objcolloc,1,glm::value_ptr(glm::normalize(colz)));
+
+        glBindVertexArray(zvec->VAO);
+        glDrawArrays(GL_LINES,0,yvec->vertexcount);
+        glLineWidth(1.0f);
+
+    }
 }
 
 

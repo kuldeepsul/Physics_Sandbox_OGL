@@ -139,6 +139,7 @@ void gui::EntityCreationWindow(float& grav,Scene* scene)
         this->OpenEntityUpdateWindow = true;
     };
 
+
     ImGui::End();
 }
 
@@ -330,4 +331,30 @@ void gui::EntityUpdateWindow(Scene* scene)
         selectedEntity = -1;
         OpenEditPanel = false;
     }
+}
+
+void gui::ShowContactProperties(Scene* scene,int index)
+{
+    glm::vec3 norm = scene->contacts[index]->normal;
+    glm::vec3 point = scene->contacts[index]->point;
+    ImGui::Text("Contact Normal.");
+    ImGui::Text("X : %.2f , Z : %.2f , Z : %.2f ",norm.x,norm.y,norm.z);
+    ImGui::Text("Contact Point.");
+    ImGui::Text("X : %.2f , Z : %.2f , Z : %.2f ",point.x,point.y,point.z);
+}
+
+void gui::EntityDebugWindow(Scene* scene)
+{
+    ImGui::Begin("Debug Window");
+
+    for(int i {0} ; i < scene->contacts.size() ; i++)
+    {
+        ImGui::BeginChild("Contact Data");
+        ImGui::Text("Contact %i", i);
+
+        ShowContactProperties(scene,i);
+
+        ImGui::EndChild();
+    }
+    ImGui::End();
 }

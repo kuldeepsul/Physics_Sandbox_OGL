@@ -55,6 +55,7 @@ class Mesh
     void gengridmesh(float interval);
     void genplanemesh(float size,glm::vec3 center,glm::vec3 normal);
     void genvectormesh(const float& mag , const glm::vec3& dir , const glm::vec3& position);
+    void genbasismesh();
     void genfromobj(std::string path);
 
 
@@ -117,7 +118,7 @@ struct CollisionFunc
 {
     // Collision Utils
     static std::vector <glm::vec3> getvertexdata(RigidBody* body);
-    static std::vector <glm::vec3> getSATaxes(const std::vector <glm::vec3> &vertdataA , const std::vector <glm::vec3> &vertdataB);
+    static std::vector <glm::vec3> getSATaxes(const RigidBody* bodyA ,const RigidBody* bodyB);
     static glm::vec2 getMinMaxprojection(const glm::vec3 &axis, const std::vector <glm::vec3> & vertexdata);
     static bool checkinrange(const float& val ,const float& range1,const float& range2);
 
@@ -136,7 +137,7 @@ struct CollisionFunc
     static glm::vec3 getvertexfacecontactpoint( RigidBody* BodyB , const glm::vec3 &axis );
     static void checkboundcollision(RigidBody* body ,RigidBody* domain);
     static void checkAABB(RigidBody* body1 , RigidBody* body2);
-    static bool checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <contact*> condata);
+    static bool checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <contact*> &condata);
     
 
     
@@ -186,23 +187,24 @@ class Scene
     public:
     std::vector <Entity*> entities;
     std::vector <contact*> contacts;
-    std::vector <Entity*> debugentities;
+    std::vector <Mesh*> debugvectors;
     Entity* scene_bound;
-    std::string vertex_shader;
-    std::string fragment_shader;
     unsigned int shaderprogram;
+    Mesh* contactmesh = nullptr;
+
 
     Entity* newEntity(unsigned int id);
     Entity* newEntity(unsigned int id , ShapeType s , glm::vec3 sides);
 
     void resolvecontacts();
 
-    void drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos);
+    void drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
     
 
     // Utils.
     void showgrids(float intervals);
-    void showcontacts(RigidBody* body);
+    void drawcontacts(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
+    void drawobjectbasisvectors(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
 
 };
 

@@ -50,7 +50,7 @@ int main()
     Scene s1;
     s1.shaderprogram = getShaderProgram(path_vert,path_frag_lighting);
     Scene Utils;
-    //Utils.showgrids(4.0f);
+    Utils.showgrids(4.0f);
     Utils.shaderprogram = getShaderProgram(path_vert_flat,path_frag_flat);
 
     //////////////////////////////////////////////////////
@@ -91,7 +91,8 @@ int main()
 
     ent1->isWireFrame = false;
     ent1->entitybody->isCollider = true;
-    ent1->entitybody->position = {-3.0f,3.0f,0.0f};
+    ent1->entitybody->position = {-3.2f,3.0f,0.0f};
+    ent1->entitybody->updateorientation(32.4f, glm::vec3{1.0f,0.0f,0.0f});
 
     // create Cube 02
     
@@ -109,7 +110,8 @@ int main()
 
     ent2->isWireFrame = false;
     ent2->entitybody->isCollider = true;
-    ent2->entitybody->position = {2.0f, 3.0f,0.0f};
+    ent2->entitybody->position = {-1.2f, 3.0f,0.0f};
+    ent2->entitybody->updateorientation(-65.0f, glm::vec3{0.0f,1.0f,0.0f});
  
     /////////////////////////////////////////////////////////////////
 
@@ -119,6 +121,7 @@ int main()
     bool showcontrols {true};
     bool showobjectproperties {false};
     static bool firstmouse {true} ;
+    bool showcontactdebugdata{true};
     bool drawcontact {true};
 
     cursormode currentmode = cursormode::camera_mode;
@@ -217,15 +220,16 @@ int main()
         }   
 
         // Collision Detection.
-        for (Entity* ent1 : s1.entities)
+        for (int i {0} ; i < s1.entities.size() ; i++)
         {
-            
+            Entity* &ent1 = s1.entities[i];
             bool collision_status = false;
 
             if (ent1->entitybody->isCollider)
             {
-                for (Entity* ent2 : s1.entities)
+                for (int j = i + 1 ; j < s1.entities.size() ; j++ )
                 {
+                    Entity* &ent2 = s1.entities[j];
                     
                     if (ent2->entitybody->isCollider)
                     {
@@ -236,7 +240,6 @@ int main()
                         else
                         {
                             collision_status = CollisionFunc::checkSAT(ent1->entitybody , ent2->entitybody,s1.contacts);
-                            Utils.showcontacts(ent1->entitybody);
                         }
                         if(collision_status)
                         {
@@ -256,8 +259,10 @@ int main()
         }
 
         // Render Scenes.
-        s1.drawScene(Presp,cam.viewmatrix,cam.campos);
-        Utils.drawScene(Presp,cam.viewmatrix,cam.campos);
+        s1.drawScene(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
+        s1.drawcontacts(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
+        s1.drawobjectbasisvectors(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
+        Utils.drawScene(Presp,cam.viewmatrix,cam.campos,GL_LINES);
         
 
 
@@ -279,6 +284,10 @@ int main()
         if(ui->OpenEntityUpdateWindow)
         {
             ui->EntityUpdateWindow(&s1);
+        }
+        if (showcontactdebugdata)
+        {
+            ui->EntityDebugWindow(&s1);
         }
 
         ImGui::Render();
