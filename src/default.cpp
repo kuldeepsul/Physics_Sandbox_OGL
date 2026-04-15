@@ -121,12 +121,37 @@ void FPSCamera::processkeyboardinput(GLFWwindow* window)
     this->updateViewMatrix();
 };
 
-void gui::EntityCreationWindow(float& grav,Scene* scene)
+
+void gui::show(Scene* s1)
+{
+    if(this->OpenEntityCreationWindow)
+    {
+        this->EntityCreationWindow(s1);
+    }
+    if (this->OpenEntityPropertiesWindow)
+    {
+        this->EntityPropertiesWindow(s1);
+    }
+    if(this->OpenEntityUpdateWindow)
+    {
+        this->EntityUpdateWindow(s1);
+    }
+    if (this->OpenContactDebugWindow)
+    {
+        this->ContactDebugWindow(s1);
+    }
+    if (this->OpenSATDebugWindow)
+    {
+        this->SATDebugWindow(s1);
+    }
+};
+
+void gui::EntityCreationWindow(Scene* scene)
 {
     ImGui::SetNextWindowSize (ImVec2(200,300),ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(ImVec2(0,0),ImGuiCond_FirstUseEver);
     ImGui::Begin("Main",&this->OpenEntityCreationWindow);
-    ImGui::SliderFloat("Gravity",&grav,0.0f,20.0f);
+    //ImGui::SliderFloat("Gravity",&grav,0.0f,20.0f);
 
     if (ImGui::Button("Create Entity")) 
     {

@@ -92,6 +92,8 @@ int main()
     ent1->isWireFrame = false;
     ent1->entitybody->isCollider = true;
     ent1->entitybody->position = {-3.2f,3.0f,0.0f};
+    ent1->entitybody->amomentum = {5.0f,0.0f,0.0f};
+    ent1->entitybody->lmomentum = {1.0f,0.0f,0.0f};
     ent1->entitybody->updateorientation(32.4f, glm::vec3{1.0f,0.0f,0.0f});
 
     // create Cube 02
@@ -111,6 +113,8 @@ int main()
     ent2->isWireFrame = false;
     ent2->entitybody->isCollider = true;
     ent2->entitybody->position = {-1.2f, 3.0f,0.0f};
+    ent2->entitybody->amomentum = {0.0f,5.0f,0.0f};
+    ent2->entitybody->lmomentum = {0.0f,1.0f,0.0f};
     ent2->entitybody->updateorientation(50.2f, glm::vec3{1.0f,1.0f,0.0f});
  
     /////////////////////////////////////////////////////////////////
@@ -136,6 +140,8 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         if(glfwGetKey(window,GLFW_KEY_ESCAPE)==GLFW_PRESS)
         {
@@ -154,9 +160,6 @@ int main()
             }
         }
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
         if (glfwGetKey(window,GLFW_KEY_M) == GLFW_PRESS)
         {
             if (currentmode == cursormode::camera_mode) 
@@ -188,75 +191,12 @@ int main()
         // Physics Loop
         if(!isPaused)
         {
-            s1.resolvecontacts();
-            for (Entity* ent : s1.entities)
-            {
-
-                if (ent->entitybody->isCollider)
-                {
-                    
-                    ent->entitybody->acceleration = grav * glm::vec3 (0.0f , -1.0f ,0.0f);
-                    ent->entitybody->velocity += (0.01f) * ent->entitybody->acceleration;
-                    ent->entitybody->position += (0.01f) * ent->entitybody->velocity;
-                    ent->updateModelMatrix();
-                    CollisionFunc::checkboundcollision(ent->entitybody,s1.scene_bound->entitybody);
-
-                    for (Entity* ent2 : s1.entities)
-                    {
-                        if(ent2->entitybody->isCollider)
-                        {
-                            if(ent2 == ent)
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                //CollisionFunc::checkAABB(ent->entitybody,ent2->entitybody);
-                            }
-                        }
-                    }
-                }
-            }
+            s1.stepphysics(0.01f);
         }   
 
         // Collision Detection.
-        for (int i {0} ; i < s1.entities.size() ; i++)
-        {
-            Entity* &ent1 = s1.entities[i];
-            bool collision_status = false;
-
-            if (ent1->entitybody->isCollider)
-            {
-                for (int j = i + 1 ; j < s1.entities.size() ; j++ )
-                {
-                    Entity* &ent2 = s1.entities[j];
-                    
-                    if (ent2->entitybody->isCollider)
-                    {
-                        if (ent1->id == ent2->id)
-                        {
-                            continue;
-                        }
-                        else
-                        {
-                            collision_status = CollisionFunc::checkSAT(ent1->entitybody , ent2->entitybody,s1.contacts,s1.SATaxes);
-                        }
-                        if(collision_status)
-                        {
-                            ent1->col = {1.0f,0.0f,0.0f};
-                            ent2->col = {1.0f,0.0f,0.0f};
-                            
-                        }
-                        else
-                        {
-                            ent1->col = {1.0f,1.0f,1.0f};
-                            ent2->col = {1.0f,1.0f,1.0f};
-
-                        }
-                    }
-                }
-            }
-        }
+        s1.refreshDebugData();
+        s1.genSATcontactdata();
 
         // Render Scenes.
         s1.drawScene(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
@@ -271,26 +211,7 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if(ui->OpenEntityCreationWindow)
-        {
-            ui->EntityCreationWindow(grav,&s1);
-        }
-        if (ui->OpenEntityPropertiesWindow)
-        {
-            ui->EntityPropertiesWindow(&s1);
-        }
-        if(ui->OpenEntityUpdateWindow)
-        {
-            ui->EntityUpdateWindow(&s1);
-        }
-        if (showcontactdebugdata)
-        {
-            ui->ContactDebugWindow(&s1);
-        }
-        if (ui->OpenSATDebugWindow)
-        {
-            ui->SATDebugWindow(&s1);
-        }
+        ui->show(&s1);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

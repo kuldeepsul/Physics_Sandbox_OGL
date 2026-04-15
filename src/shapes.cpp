@@ -1008,6 +1008,7 @@ RigidBody::RigidBody(ShapeType s_param,glm::vec3 side)
         throw std::runtime_error("FATAL ERROR: Invalid rigid body parameters.");
     }
     this->hcubeside = 0.5f * side;
+    this->genLocalInertiaMatrix();
 };
 
 
@@ -1023,7 +1024,60 @@ void RigidBody::updateorientation(float angle,glm::vec3 axisofrotation)
     this->orientation = { s * naxis.x , s * naxis.y , s * naxis.z , c }; 
 };
 
+void RigidBody::genLocalInertiaMatrix()
+{
+    // For Cuboid Shapes Only.
 
+    float x = 2 * this->hcubeside.x;
+    float y = 2 * this->hcubeside.y;
+    float z = 2 * this->hcubeside.z;
+
+    float a = (y * y) + (z * z); 
+    float b = (x * x) + (z * z); 
+    float c = (y * y) + (x * x); 
+
+    glm::mat3 ibody = {a,0.0f,0.0f,
+                        0.0f,b,0.0f,
+                        0.0f,0.0f,c
+    };
+
+    glm::mat3 invibody = {1.0f/a,0.0f,0.0f,
+                        0.0f,1.0f/b,0.0f,
+                        0.0f,0.0f,1.0f/c
+    };
+
+    this->InertiaL = ibody;
+    this->invInertiaL = invibody;
+    return;
+                    
+};
+
+void RigidBody::updatestate(const float &dt)
+{
+    // Get Global Moment of Inertia Based on current orientaion.
+    glm::mat3 R = glm::mat3_cast(this->orientation);
+    glm::mat3 RT = glm::transpose(R);
+
+    this->invInertiaG = R * this->invInertiaL * RT;
+    this->InertiaG = R * this->InertiaL * RT;
+
+    // Update Momentum based on collision data and force applied.
+    this->amomentum = this->amomentum + this->Torque * dt;
+    this->lmomentum = this->lmomentum + this->Force * dt;
+
+    // Get Velocity and Angular Velocity From , Linear and Angular Momentum.
+    this->avelocity = invInertiaG * this->amomentum;
+    this->velocity = this->lmomentum / this->mass;
+
+    // Update Position and Orientation Based on Velocity and Angular Velocity.
+    this->position = this->position + this->velocity * dt;
+
+    glm::quat omega = {0.0f, this->amomentum.x , this->amomentum.y, this->amomentum.z};
+
+    this->orientation = this->orientation + (0.5f * omega *this->orientation * dt );
+    this->orientation = glm::normalize(this->orientation);
+
+};
    
 
 /////////////////////////////////////
@@ -1042,7 +1096,63 @@ void Scene::showgrids(float interval)
 
 };
 
-void Scene::resolvecontacts()
+void Scene::stepphysics(const float &dt)
+{
+    //this->refreshDebugData();
+
+    for(Entity* ent : this->entities)
+    {
+        if(ent->entitybody->isCollider)
+        {
+            ent->entitybody->updatestate(dt);
+            ent->updateModelMatrix();
+        }
+    }
+};
+
+void Scene::genSATcontactdata()
+{
+    for (int i {0} ; i < this->entities.size() ; i++)
+    {
+        Entity* &ent1 = this->entities[i];
+        bool collision_status = false;
+
+        if (ent1->entitybody->isCollider)
+        {
+            for (int j = i + 1 ; j < this->entities.size() ; j++ )
+            {
+                Entity* &ent2 = this->entities[j];
+                
+                if (ent2->entitybody->isCollider)
+                {
+                    if (ent1->id == ent2->id)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        collision_status = CollisionFunc::checkSAT(ent1->entitybody , ent2->entitybody,this->contacts,this->SATaxes);
+                    }
+                    if(collision_status)
+                    {
+                        ent1->col = {1.0f,0.0f,0.0f};
+                        ent2->col = {1.0f,0.0f,0.0f};
+                        
+                    }
+                    else
+                    {
+                        ent1->col = {1.0f,1.0f,1.0f};
+                        ent2->col = {1.0f,1.0f,1.0f};
+
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void Scene::refreshDebugData()
 {
     delete this->contactmesh;
     this->contactmesh = nullptr;
@@ -1061,6 +1171,14 @@ void Scene::resolvecontacts()
     this->contacts.clear();
     this->debugvectors.clear();
     this->SATaxes.clear();
+}
+
+void Scene::resolveContacts()
+{
+    for (contact* con: this->contacts)
+    {
+        //
+    }
 }
 
 void Scene::drawcontacts(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive)

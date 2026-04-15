@@ -100,9 +100,21 @@ struct RigidBody
     // Derived 
     glm::vec3 velocity = {0.0f ,0.0f ,0.0f };
     glm::vec3 acceleration = {0.0f ,0.0f ,0.0f };
+    glm::vec3 avelocity = {0.0f,0.0f,0.0f};
+    glm::vec3 aacceleration = {0.0f,0.0f,0.0f};
 
     // Constants
     float mass {1.0f};
+    glm::mat3 InertiaG {1.0f};
+    glm::mat3 invInertiaG {1.0f};
+
+    // Local Moment of Inertia.
+    glm::mat3 InertiaL {1.0f};
+    glm::mat3 invInertiaL{1.0f};
+
+    // Force and Torque.
+    glm::vec3 Force {0.0f,0.0f,0.0f};   
+    glm::vec3 Torque {0.0f,0.0f,0.0f};
 
     // Shape of body
     ShapeType s ;
@@ -110,8 +122,8 @@ struct RigidBody
     
     RigidBody(ShapeType s_param,glm::vec3 side);
     void updateorientation(float angle,glm::vec3 axisofrotation);
-
-
+    void genLocalInertiaMatrix();
+    void updatestate(const float &dt);
 };
 
 struct CollisionFunc
@@ -197,7 +209,10 @@ class Scene
     Entity* newEntity(unsigned int id);
     Entity* newEntity(unsigned int id , ShapeType s , glm::vec3 sides);
 
-    void resolvecontacts();
+    void stepphysics(const float &dt);
+    void genSATcontactdata();
+    void refreshDebugData();
+    void resolveContacts();
 
     void drawScene(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
     
@@ -206,6 +221,11 @@ class Scene
     void showgrids(float intervals);
     void drawcontacts(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
     void drawobjectbasisvectors(glm::mat4 &persp , glm::mat4 &view , glm::vec3 lightpos,int gl_primitive);
+
+};
+
+struct PhysicsFunc
+{
 
 };
 

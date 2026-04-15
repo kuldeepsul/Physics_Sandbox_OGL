@@ -49,7 +49,10 @@ class gui
     bool OpenContactDebugWindow{true};
     bool OpenSATDebugWindow {true};
 
-    void EntityCreationWindow(float& grav,Scene* scene);
+
+    void show(Scene* scene);
+
+    void EntityCreationWindow(Scene* scene);
     void EntityPropertiesWindow(Scene* scene);
     void EntityUpdateWindow(Scene* scene);
     void ContactDebugWindow(Scene* scene);
