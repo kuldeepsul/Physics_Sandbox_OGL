@@ -53,11 +53,10 @@ class Mesh
     // Mesh Generation Methods
     void gencuboidmesh(glm::vec3 sides);
     void gengridmesh(float interval);
-    void genplanemesh(float size,glm::vec3 center,glm::vec3 normal);
+    void genplanemesh(float size);
     void genvectormesh(const float& mag , const glm::vec3& dir , const glm::vec3& position);
     void genbasismesh();
     void genfromobj(std::string path);
-
 
 };
 
@@ -85,11 +84,12 @@ struct contact
     RigidBody* bodyB;
 };
 
-enum class ShapeType {sphere,cube,plane};
+enum class ShapeType {cube,plane};
 
 struct RigidBody
 {
     bool isCollider {true};
+    bool isStatic {false};
 
     // Physics Parameters
     glm::vec3 position = {0.0f , 0.0f ,0.0f};
@@ -103,9 +103,10 @@ struct RigidBody
 
     // Constants
     float mass {1.0f};
+    float invmass {1.0f};
     glm::mat3 InertiaG {1.0f};
     glm::mat3 invInertiaG {1.0f};
-    float restitution {1.0};
+    float restitution {0.3};
 
     // Local Moment of Inertia.
     glm::mat3 InertiaL {1.0f};
@@ -116,8 +117,9 @@ struct RigidBody
     glm::vec3 Torque {0.0f,0.0f,0.0f};
 
     // Shape of body
-    ShapeType s ;
+    ShapeType s = ShapeType::cube ;
     glm::vec3 hcubeside;  
+    glm::vec3 planenormal {0.0f,1.0f,0.0f};
     
     RigidBody(ShapeType s_param,glm::vec3 side);
     void updateorientation(float angle,glm::vec3 axisofrotation);
@@ -138,7 +140,6 @@ struct CollisionFunc
                                     const int &axis_id
     );
 
-    // Return pair of edges , represented by the pair of ids forming these edges.
     static glm::vec3 getedgeedgecontactpoint( RigidBody* BodyA , RigidBody* BodyB , 
                                         const glm::vec3 &axis , 
                                         const int &axis_id
@@ -149,8 +150,7 @@ struct CollisionFunc
     static void checkboundcollision(RigidBody* body ,RigidBody* domain);
     static void checkAABB(RigidBody* body1 , RigidBody* body2);
     static bool checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <contact*> &condata,std::vector <glm::vec3> &checkaxes);
-    
-
+    static bool checkPlaneBox(RigidBody* body1,RigidBody* body2,std::vector <contact*> &condata);
     
 };
 
@@ -198,6 +198,7 @@ class Scene
     public:
     std::vector <Entity*> entities;
     std::vector <contact*> contacts;
+    std::vector <contact*> groundcontacts;
     std::vector <Mesh*> debugvectors;
     std::vector <glm::vec3> SATaxes;
     Entity* scene_bound;
@@ -209,7 +210,8 @@ class Scene
     Entity* newEntity(unsigned int id , ShapeType s , glm::vec3 sides);
 
     void stepphysics(const float &dt);
-    void genSATcontactdata();
+    void gencontactdata();
+    void resolvegroundcontacts();
     void refreshDebugData();
     void resolveContacts();
 

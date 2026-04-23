@@ -318,6 +318,32 @@ void Mesh::gencuboidmesh(glm::vec3 sides)
 
 };
 
+void Mesh::genplanemesh(float size)
+{
+    float hsize  = size * 0.5f;
+
+    // First we will create a general flat ground plane whose normal is y-axis.
+
+    std::vector <float> vertexData = 
+    {
+        hsize,0.0f,hsize,0.0f,1.0f,0.0f,
+        -hsize,0.0f,hsize,0.0f,1.0f,0.0f,
+        hsize,0.0f,-hsize,0.0f,1.0f,0.0f,
+
+        hsize,0.0f,-hsize,0.0f,1.0f,0.0f,
+        -hsize,0.0f,hsize,0.0f,1.0f,0.0f,
+        -hsize,0.0f,-hsize,0.0f,1.0f,0.0f,
+
+    };
+
+    // Now we will rotate the data as per the normal.
+
+
+    this->data =  vertexData;
+    this->vertexcount = 6;
+    this->genBufferObjects();
+};
+
 void Mesh::gengridmesh(float interval)
 {
     float size = 100.0f;
@@ -920,6 +946,55 @@ bool CollisionFunc::checkSAT(RigidBody* body1 , RigidBody* body2,std::vector <co
 
 }
 
+bool CollisionFunc::checkPlaneBox(RigidBody* body1,RigidBody* body2,std::vector <contact*> &condata)
+{
+    glm::vec3 colnorm;
+    RigidBody* cube;
+    RigidBody* plane;
+
+    if(body1->s == ShapeType::plane)
+    {
+        // check collision taking body1 as plane.
+        plane = body1;
+        cube = body2;
+    }
+    else
+    {
+        // check collision taking body2 as plane.
+        plane = body2;
+        cube = body1;
+    }
+    if (glm::dot(cube->position,plane->planenormal) > 0.0f)
+    {
+        colnorm = -plane->planenormal;
+    }
+    else if (glm::dot(cube->position,plane->planenormal) < 0.0f)
+    {
+        colnorm = plane->planenormal;
+    }
+
+
+    glm::vec3 colpoint = CollisionFunc::getvertexfacecontactpoint(cube,colnorm);
+    bool collision = false;
+    colnorm = plane->planenormal;
+
+    if (glm::dot(colpoint,colnorm) < 0.0f)
+    {
+        // Collision detected.
+        contact* con = new contact();
+        collision = true;
+        con->depth = std::abs(glm::dot(colpoint,colnorm));
+        con->normal = colnorm;
+        con->point = colpoint;
+        con->bodyA = plane;
+        con->bodyB = cube;
+        condata.push_back(con);
+    }
+
+    return collision;
+};
+
+
 /////////////////////////////////////////////////////////////////////
 
 
@@ -1003,12 +1078,21 @@ void Entity::updateModelMatrix()
 
 RigidBody::RigidBody(ShapeType s_param,glm::vec3 side)
 {
-    if(s_param != ShapeType::cube)
+    if(s_param == ShapeType::cube)
     {
-        throw std::runtime_error("FATAL ERROR: Invalid rigid body parameters.");
+        this->s = s_param;
+        this->hcubeside = 0.5f * side;
+        this->genLocalInertiaMatrix();
     }
-    this->hcubeside = 0.5f * side;
-    this->genLocalInertiaMatrix();
+    else if (s_param == ShapeType::plane)
+    {
+        this->s = s_param;
+        this->planenormal = {0.0f,1.0f,0.0f};
+        //this->invInertiaG = glm::mat3 {0.0f};
+        this->invInertiaL = glm::mat3 {0.0f};
+        this->invmass = 0.0f;
+    }
+
 };
 
 
@@ -1048,6 +1132,7 @@ void RigidBody::genLocalInertiaMatrix()
 
     this->InertiaL = ibody;
     this->invInertiaL = invibody;
+    this->invmass  = 1.0f / this->mass;
     return;
                     
 };
@@ -1067,7 +1152,7 @@ void RigidBody::updatestate(const float &dt)
 
     // Get Velocity and Angular Velocity From , Linear and Angular Momentum.
     this->avelocity = invInertiaG * this->amomentum;
-    this->velocity = this->lmomentum / this->mass;
+    this->velocity = this->lmomentum * this->invmass;
 
     // Update Position and Orientation Based on Velocity and Angular Velocity.
     this->position = this->position + this->velocity * dt;
@@ -1110,18 +1195,19 @@ void Scene::stepphysics(const float &dt)
     }
 };
 
-void Scene::genSATcontactdata()
+void Scene::gencontactdata()
 {
     for (int i {0} ; i < this->entities.size() ; i++)
     {
-        Entity* &ent1 = this->entities[i];
-        bool collision_status = false;
+        Entity* ent1 = this->entities[i];
+        
 
         if (ent1->entitybody->isCollider)
         {
-            for (int j = i + 1 ; j < this->entities.size() ; j++ )
+            for (int j =i + 1  ; j < this->entities.size() ; j++ )
             {
-                Entity* &ent2 = this->entities[j];
+                Entity* ent2 = this->entities[j];
+                bool collision_status = false;
                 
                 if (ent2->entitybody->isCollider)
                 {
@@ -1129,23 +1215,78 @@ void Scene::genSATcontactdata()
                     {
                         continue;
                     }
-                    else
+                    else if (ent1->entitybody->s == ShapeType::cube && ent2->entitybody->s == ShapeType::cube)
                     {
                         collision_status = CollisionFunc::checkSAT(ent1->entitybody , ent2->entitybody,this->contacts,this->SATaxes);
                     }
-                    if(collision_status)
+                    else if (ent1->entitybody->s != ShapeType::cube && ent2->entitybody->s != ShapeType::cube)
                     {
-                        ent1->col = {1.0f,0.0f,0.0f};
-                        ent2->col = {1.0f,0.0f,0.0f};
-                        
+                        continue;
                     }
-                    else
+                    else if (ent1->entitybody->s != ShapeType::cube || ent2->entitybody->s != ShapeType::cube)
                     {
-                        ent1->col = {1.0f,1.0f,1.0f};
-                        ent2->col = {1.0f,1.0f,1.0f};
+                        collision_status = CollisionFunc::checkPlaneBox(ent1->entitybody,ent2->entitybody,this->contacts);
+                    }
 
-                    }
+                    // if(collision_status)
+                    // {
+                    //     ent1->col = {1.0f,0.0f,0.0f};
+                    //     ent2->col = {1.0f,0.0f,0.0f};
+                        
+                    // }
+                    // else
+                    // {
+                    //     ent1->col = {1.0f,1.0f,1.0f};
+                    //     ent2->col = {1.0f,1.0f,1.0f};
+
+                    // }
                 }
+            }
+        }
+    }
+}
+
+void Scene::resolvegroundcontacts()
+{
+    for (Entity* ent : this->entities)
+    {
+        if(ent->entitybody->isCollider)
+        {
+            float extent = glm::length(ent->entitybody->hcubeside);
+            float val = ent->entitybody->position.y - extent;
+
+            if(val < 0.0f)
+            {
+                glm::vec3 colpoint = CollisionFunc::getvertexfacecontactpoint(ent->entitybody,glm::vec3{0.0,1.0f,0.0});
+                glm::vec3 colnormal = glm::vec3 {0.0,1.0f,0.0};
+                glm::vec3 omegaA = ent->entitybody->avelocity;
+                glm::vec3 rA = colpoint - ent->entitybody->position;
+
+                glm::vec3 velocityP = glm::cross(omegaA,rA) + ent->entitybody->velocity;
+
+                glm::vec3 relativeP = velocityP;  
+                float impulse = 0 ;
+                float e  = ent->entitybody->restitution;
+
+                if (glm::dot(relativeP,colnormal) > 0.0f)
+                {
+                    float linearPart = (1.0f/ent->entitybody->mass);
+                    glm::vec3 A = ent->entitybody->invInertiaG * glm::cross((rA),(colnormal));
+                    
+                    glm::vec3 AB = glm::cross(A,rA) ;
+
+                    float angularPart = glm::dot(AB,colnormal) ;
+                    float denom = linearPart + angularPart;
+                    float numer = -(1.0f + e) * (glm::dot(relativeP,colnormal));
+
+                    impulse = numer/denom;
+                }
+
+                glm::vec3 impforce = impulse * colnormal;
+
+                ent->entitybody->lmomentum += impforce;
+                ent->entitybody->amomentum += glm::cross((rA),impforce);
+                ent->entitybody->position.y += std::abs(colpoint.y);
             }
         }
     }
@@ -1218,14 +1359,34 @@ void Scene::resolveContacts()
         }
         glm::vec3 impforce = impulse * con->normal;
 
-        con->bodyA->lmomentum += impforce;
-        con->bodyB->lmomentum -= impforce;
+    
+        if(!con->bodyA->isStatic)
+        {
+            con->bodyA->lmomentum += impforce;
+            con->bodyA->amomentum += glm::cross((con->point - con->bodyA->position),impforce);
+            
+        }
 
-        con->bodyA->amomentum += glm::cross((con->point - con->bodyA->position),impforce);
-        con->bodyB->amomentum -= glm::cross((con->point - con->bodyB->position),impforce);
+        if(!con->bodyB->isStatic)
+        {
+            con->bodyB->lmomentum -= impforce;
+            con->bodyB->amomentum -= glm::cross((con->point - con->bodyB->position),impforce);
+            
+        }
 
-        con->bodyA->position -= 0.5f * con->depth * con->normal;
-        con->bodyB->position += 0.5f * con->depth * con->normal;
+        if (!con->bodyA->isStatic && !con->bodyB->isStatic)
+        {
+            con->bodyA->position -= 0.5f * con->depth * con->normal;
+            con->bodyB->position += 0.5f * con->depth * con->normal;
+        }
+        else if (con->bodyA->isStatic)
+        {
+            con->bodyB->position +=  con->depth * con->normal;
+        }
+        else if (con->bodyB->isStatic)
+        {
+            con->bodyA->position +=  con->depth * con->normal;
+        }
 
     }
 }
@@ -1364,7 +1525,6 @@ void Scene::drawobjectbasisvectors(glm::mat4 &persp , glm::mat4 &view , glm::vec
 
     }
 }
-
 
 
 
