@@ -1,12 +1,7 @@
 #include <iostream>
-#include "default.h"
+#include "ogldef.h"
 #include "shapes.h"
-#include <glm/glm/glm.hpp>
-#include <glm/glm/gtc/matrix_transform.hpp>
-#include <glm/glm/gtc/type_ptr.hpp>
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
+#include "gui.h"
 
 int main()
 {
@@ -46,6 +41,7 @@ int main()
     std::string path_frag_lighting = "shader/Lighting_shader.glsl";
     std::string path_frag_debug = "shader/debug_shader.glsl";
     std::string path_frag_flat = "shader/flat_shader.glsl";
+    std::string path_depth = "shader/depth_buffer.glsl";;
 
     Scene s1;
     s1.shaderprogram = getShaderProgram(path_vert,path_frag_lighting);
@@ -78,7 +74,7 @@ int main()
     // create Cube 01
 
     Entity* ent1  = s1.newEntity(1);
-    glm::vec3 side1 = {2.0f ,2.0f , 2.0f};
+    glm::vec3 side1 = {2.5f ,2.0f , 3.0f};
     // Create mesh for entity
     ent1->name = "Cube 01";
     ent1->id  = 1;
@@ -102,7 +98,7 @@ int main()
     // create Cube 02
     
     Entity* ent2  = s1.newEntity(2);
-    glm::vec3 side2 = {1.0f ,1.0f , 1.0f};
+    glm::vec3 side2 = {1.5f ,1.0f , 1.5f};
     // Create mesh for entity
     ent2->name = "Cube 02";
     ent2->id  = 2;
@@ -124,7 +120,7 @@ int main()
 
     // create cube 03
     Entity* ent4  = s1.newEntity(3);
-    glm::vec3 side4 = {1.5f ,1.5f , 1.5f};
+    glm::vec3 side4 = {1.0f ,1.5f , 1.0f};
     // Create mesh for entity
     ent4->name = "Cube 05";
     ent4->id  = 3;
@@ -168,6 +164,7 @@ int main()
 
     static float grav {0.0f};
     glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     bool isPaused {true} ;
     bool showcontrols {true};
     bool showobjectproperties {false};
@@ -243,7 +240,7 @@ int main()
         // Physics Loop
         if(!isPaused)
         {
-            s1.stepphysics(0.05f);
+            s1.stepphysics(0.03f);
         }   
 
 
@@ -251,7 +248,7 @@ int main()
 
         // Render Scenes.
         s1.drawScene(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
-        //s1.drawcontacts(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
+        s1.drawcontacts(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
         //s1.drawobjectbasisvectors(Presp,cam.viewmatrix,cam.campos,GL_TRIANGLES);
         Utils.drawScene(Presp,cam.viewmatrix,cam.campos,GL_LINES);
         

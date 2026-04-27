@@ -55,7 +55,11 @@ add_executable(
     app
     src/main.cpp
     src/shapes.cpp
-    src/default.cpp
+    src/ogldef.cpp
+    src/objreader.cpp
+    src/collision.cpp
+    src/camera.cpp
+    src/gui.cpp
 )
 
 target_include_directories(app
